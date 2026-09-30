@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A reader-first markdown app: highlight, comment and bookmark without touching your files"
 authors = ["Jaival Saija"]
 license = "MIT"
-repository = "https://github.com/jaivalsaija/mdgloss"
+repository = "https://github.com/Jaival/mdgloss"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
