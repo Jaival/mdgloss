@@ -17,7 +17,7 @@ jobs:
     name: Frontend (lint, typecheck, test, build)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -35,7 +35,7 @@ jobs:
     name: Rust (fmt, clippy, test)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Tauri system dependencies
         run: |
