@@ -51,7 +51,8 @@ function App() {
 
   const openFolder = () =>
     run(async () => {
-      const path = await open({ multiple: false, directory: true });
+      // recursive: true grants access to subfolders, not just the picked folder itself.
+      const path = await open({ multiple: false, directory: true, recursive: true });
       if (path === null) return;
       setWorkspace({ title: baseName(path), tree: await loadMarkdownTree(fs, path) });
       setDoc(null);
