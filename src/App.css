@@ -1,13 +1,37 @@
-/* Layout only. Typography and the light and dark themes come with the renderer in week 2. */
+/* Theme colours. useTheme() sets data-theme on <html>; light is the fallback before it runs. */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg-subtle: #f6f8fa;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --hover: rgb(129 139 152 / 12%);
+  --selected: rgb(9 105 218 / 14%);
+  --link: #0969da;
+  --error: #d1242f;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --bg-subtle: #151b23;
+  --fg: #e6edf3;
+  --muted: #9198a1;
+  --border: #3d444d;
+  --hover: rgb(101 108 118 / 20%);
+  --selected: rgb(56 139 253 / 20%);
+  --link: #4493f8;
+  --error: #f85149;
+}
+
 :root {
-  color-scheme: light dark;
   font-family: system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.5;
-  --border: color-mix(in srgb, CanvasText 15%, transparent);
-  --muted: color-mix(in srgb, CanvasText 55%, transparent);
-  --hover: color-mix(in srgb, CanvasText 8%, transparent);
-  --selected: color-mix(in srgb, AccentColor 25%, transparent);
+  color: var(--fg);
+  background: var(--bg);
 }
 
 body {
@@ -28,6 +52,7 @@ body {
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
 }
 
 .brand {
@@ -35,8 +60,12 @@ body {
   margin-right: 8px;
 }
 
+.theme-toggle {
+  margin-left: auto;
+}
+
 .error {
-  color: #d33;
+  color: var(--error);
   margin-left: 8px;
 }
 
@@ -44,6 +73,7 @@ body {
   overflow: auto;
   padding: 8px;
   border-right: 1px solid var(--border);
+  background: var(--bg-subtle);
 }
 
 .sidebar-title {
@@ -101,12 +131,5 @@ body {
 
 .reader {
   overflow: auto;
-  padding: 24px 32px;
-}
-
-.source {
-  margin: 0 auto;
-  max-width: 80ch;
-  white-space: pre-wrap;
-  word-break: break-word;
+  padding: 32px 40px 96px;
 }

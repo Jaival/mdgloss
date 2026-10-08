@@ -1,0 +1,267 @@
+/* Reading layout for rendered markdown. Colours come from the theme variables in App.css. */
+.markdown-body {
+  max-width: 72ch;
+  margin: 0 auto;
+  font-size: 16px;
+  line-height: 1.65;
+  overflow-wrap: break-word;
+
+  --code-bg: rgb(129 139 152 / 12%);
+}
+
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-body :is(p, ul, ol, blockquote, pre, table, details) {
+  margin: 0 0 1em;
+}
+
+.markdown-body :is(h1, h2, h3, h4, h5, h6) {
+  margin: 1.6em 0 0.6em;
+  line-height: 1.25;
+  font-weight: 600;
+  scroll-margin-top: 16px;
+}
+
+.markdown-body h1 {
+  font-size: 2em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown-body h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown-body h3 {
+  font-size: 1.25em;
+}
+
+.markdown-body h4 {
+  font-size: 1em;
+}
+
+.markdown-body :is(h5, h6) {
+  font-size: 0.875em;
+}
+
+.markdown-body h6 {
+  color: var(--muted);
+}
+
+.markdown-body a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+.markdown-body :is(ul, ol) {
+  padding-left: 2em;
+}
+
+.markdown-body li + li {
+  margin-top: 0.25em;
+}
+
+.markdown-body li > :is(ul, ol) {
+  margin: 0.25em 0 0;
+}
+
+/* GFM task lists */
+.markdown-body .contains-task-list {
+  list-style: none;
+  padding-left: 1.2em;
+}
+
+.markdown-body .task-list-item input {
+  margin: 0 0.4em 0 -1.2em;
+  vertical-align: middle;
+}
+
+.markdown-body blockquote {
+  padding: 0 1em;
+  color: var(--muted);
+  border-left: 0.25em solid var(--border);
+}
+
+.markdown-body hr {
+  height: 0.25em;
+  margin: 1.5em 0;
+  border: 0;
+  background: var(--border);
+}
+
+.markdown-body img {
+  max-width: 100%;
+  background: var(--bg);
+}
+
+.markdown-body code,
+.markdown-body pre {
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+}
+
+.markdown-body :not(pre) > code {
+  padding: 0.15em 0.35em;
+  border-radius: 6px;
+  background: var(--code-bg);
+}
+
+.markdown-body pre {
+  padding: 1em;
+  overflow: auto;
+  line-height: 1.45;
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+
+.markdown-body pre code {
+  font-size: inherit;
+}
+
+.markdown-body table {
+  display: block;
+  max-width: 100%;
+  overflow: auto;
+  border-collapse: collapse;
+}
+
+.markdown-body :is(th, td) {
+  padding: 6px 13px;
+  border: 1px solid var(--border);
+}
+
+.markdown-body th {
+  font-weight: 600;
+}
+
+.markdown-body tr:nth-child(2n) {
+  background: var(--bg-subtle);
+}
+
+.markdown-body .footnotes {
+  font-size: 0.875em;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
+/* Visually hidden "Footnotes" heading that GFM adds for screen readers */
+.markdown-body .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+/* Syntax highlighting (highlight.js classes), GitHub's palette */
+:root,
+:root[data-theme="light"] {
+  --hl-keyword: #cf222e;
+  --hl-string: #0a3069;
+  --hl-number: #0550ae;
+  --hl-title: #8250df;
+  --hl-comment: #59636e;
+  --hl-attr: #0550ae;
+  --hl-variable: #953800;
+  --hl-addition-bg: #dafbe1;
+  --hl-addition: #116329;
+  --hl-deletion-bg: #ffebe9;
+  --hl-deletion: #82071e;
+}
+
+:root[data-theme="dark"] {
+  --hl-keyword: #ff7b72;
+  --hl-string: #a5d6ff;
+  --hl-number: #79c0ff;
+  --hl-title: #d2a8ff;
+  --hl-comment: #9198a1;
+  --hl-attr: #79c0ff;
+  --hl-variable: #ffa657;
+  --hl-addition-bg: #033a16;
+  --hl-addition: #aff5b4;
+  --hl-deletion-bg: #67060c;
+  --hl-deletion: #ffdcd7;
+}
+
+.hljs-keyword,
+.hljs-doctag,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  color: var(--hl-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-meta .hljs-string {
+  color: var(--hl-string);
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-built_in,
+.hljs-symbol,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-meta {
+  color: var(--hl-number);
+}
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.function_,
+.hljs-section {
+  color: var(--hl-title);
+}
+
+.hljs-comment,
+.hljs-code,
+.hljs-quote {
+  color: var(--hl-comment);
+  font-style: italic;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-name,
+.hljs-selector-tag {
+  color: var(--hl-attr);
+}
+
+.hljs-variable,
+.hljs-params,
+.hljs-subst {
+  color: var(--hl-variable);
+}
+
+.hljs-addition {
+  color: var(--hl-addition);
+  background: var(--hl-addition-bg);
+}
+
+.hljs-deletion {
+  color: var(--hl-deletion);
+  background: var(--hl-deletion-bg);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 600;
+}
