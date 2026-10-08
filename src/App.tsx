@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { FileTree } from "./files/FileTree";
 import { loadMarkdownTree, type TreeNode } from "./files/tree";
 import { baseName } from "./fs/path";
 import { TauriFileSystem } from "./fs/tauri";
+import { classifyLink, resolveImage } from "./markdown/links";
+import { Markdown } from "./markdown/Markdown";
+import { useTheme } from "./theme";
 import "./App.css";
+import "./markdown/markdown.css";
 
 const fs = new TauriFileSystem();
 
@@ -23,6 +29,13 @@ function App() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [doc, setDoc] = useState<OpenDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const theme = useTheme();
+  const readerRef = useRef<HTMLElement>(null);
+
+  // Start each newly opened file at the top.
+  useEffect(() => {
+    readerRef.current?.scrollTo(0, 0);
+  }, [doc?.path]);
 
   async function run(action: () => Promise<void>) {
     setError(null);
@@ -58,6 +71,29 @@ function App() {
       setDoc(null);
     });
 
+  function imageSrc(docPath: string, src: string): string {
+    const image = resolveImage(docPath, src);
+    return image.type === "file" ? convertFileSrc(image.url) : image.url;
+  }
+
+  function followLink(docPath: string, href: string) {
+    const target = classifyLink(docPath, href);
+    switch (target.type) {
+      case "anchor":
+        document.getElementById(target.id)?.scrollIntoView();
+        break;
+      case "external":
+        run(() => openUrl(target.url));
+        break;
+      case "markdown":
+        run(() => showFile(target.path));
+        break;
+      case "other":
+        run(() => revealItemInDir(target.path));
+        break;
+    }
+  }
+
   return (
     <div className="app">
       <header className="toolbar">
@@ -67,6 +103,9 @@ function App() {
         </button>
         <button type="button" onClick={openFolder}>
           Open folder
+        </button>
+        <button type="button" className="theme-toggle" onClick={theme.cycle}>
+          Theme: {theme.setting}
         </button>
         {error && (
           <span className="error" role="alert">
@@ -94,10 +133,15 @@ function App() {
         )}
       </aside>
 
-      <main className="reader">
+      <main className="reader" ref={readerRef}>
         {doc ? (
-          // Plain source until the markdown renderer lands (week 2).
-          <pre className="source">{doc.content}</pre>
+          <article className="markdown-body">
+            <Markdown
+              source={doc.content}
+              resolveImageSrc={(src) => imageSrc(doc.path, src)}
+              onLinkClick={(href) => followLink(doc.path, href)}
+            />
+          </article>
         ) : (
           <p className="muted">{workspace ? "Pick a file from the list." : null}</p>
         )}
