@@ -102,6 +102,30 @@
   background: var(--bg);
 }
 
+.markdown-body .missing-image {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.15em;
+  max-width: 100%;
+  padding: 0.6em 0.9em;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  color: var(--muted);
+  font-size: 0.875em;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+.markdown-body .missing-image-label {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.markdown-body .missing-image code {
+  overflow-wrap: anywhere;
+}
+
 .markdown-body code,
 .markdown-body pre {
   font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;

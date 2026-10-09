@@ -3,8 +3,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { visit } from "unist-util-visit";
 import { describe, expect, it } from "vitest";
-import { Markdown } from "./Markdown";
-import { markdownToHast } from "./pipeline";
+import { Markdown, MissingImage } from "./Markdown";
+import { imageSources, markdownToHast } from "./pipeline";
 
 function render(source: string, resolveImageSrc = (src: string) => src): string {
   return renderToStaticMarkup(
@@ -93,5 +93,96 @@ describe("headings and images", () => {
     const html = render("![diagram](img/a.png)\n", (src) => `asset://${src}`);
     expect(html).toContain('src="asset://img/a.png"');
     expect(html).toContain('alt="diagram"');
+  });
+});
+
+describe("missing images", () => {
+  const html = renderToStaticMarkup(
+    createElement(MissingImage, {
+      src: "docs/process%20states.png",
+      alt: "Process states",
+      width: 300,
+      "data-source-start": 4,
+      "data-source-end": 40,
+    } as Parameters<typeof MissingImage>[0]),
+  );
+
+  it("names the alt text and the path as written", () => {
+    expect(html).toContain("Image not found");
+    expect(html).toContain("Process states");
+    expect(html).toContain("<code>docs/process states.png</code>");
+  });
+
+  it("keeps the source range but not the size", () => {
+    expect(html).toContain('data-source-start="4" data-source-end="40"');
+    expect(html).not.toContain("width");
+  });
+});
+
+describe("imageSources", () => {
+  it("lists inline and reference images once, in order", () => {
+    const source = "![a](img/a.png) ![b][fig]\n\n![a again](img/a.png)\n\n[fig]: ../b.svg\n";
+    expect(imageSources(source)).toEqual({ paths: ["img/a.png", "../b.svg"], embeds: [] });
+  });
+
+  it("finds images inside lists and tables", () => {
+    const source = "- ![x](x.png)\n\n| c |\n| - |\n| ![y](y.jpg) |\n";
+    expect(imageSources(source)).toEqual({ paths: ["x.png", "y.jpg"], embeds: [] });
+  });
+
+  it("ignores images in code and raw HTML", () => {
+    expect(imageSources('`![x](x.png)`\n\n<img src="y.png">\n')).toEqual({
+      paths: [],
+      embeds: [],
+    });
+  });
+
+  it("lists Obsidian embeds separately", () => {
+    expect(imageSources("![[a.png]] ![b](b.png) ![[a.png|300]]\n")).toEqual({
+      paths: ["b.png"],
+      embeds: ["a.png"],
+    });
+  });
+});
+
+describe("Obsidian image embeds", () => {
+  const source = "Intro ![[tcp handshake.png]] and **bold** ![[b.jpg|300x200]]\n";
+  const tree = markdownToHast(source);
+
+  it("renders embeds as images that keep their source range", () => {
+    const [first, second] = elements(tree, "img");
+    expect(first.properties).toMatchObject({
+      src: "tcp%20handshake.png",
+      alt: "tcp handshake.png",
+    });
+    expect(sourceOf(source, first)).toBe("![[tcp handshake.png]]");
+    expect(sourceOf(source, second)).toBe("![[b.jpg|300x200]]");
+  });
+
+  it("keeps the text around an embed", () => {
+    const html = render(source);
+    expect(html).toMatch(/<p[^>]*>Intro <img/);
+    expect(html).toMatch(/> and <strong/);
+  });
+
+  it("reads a size or an alias after the pipe", () => {
+    expect(render("![[a.png|300]]\n")).toMatch(/<img[^>]*width="300"/);
+    expect(render("![[a.png|300x200]]\n")).toMatch(/height="200"/);
+    expect(render("![[a.png|state diagram]]\n")).toContain('alt="state diagram"');
+  });
+
+  it("ignores the #fragment", () => {
+    expect(render("![[a.png#tape]]\n")).toContain('src="a.png"');
+  });
+
+  it("finds the right offsets after an escape earlier in the line", () => {
+    const escaped = "\\*x\\* ![[a.png]]\n";
+    expect(sourceOf(escaped, elements(markdownToHast(escaped), "img")[0])).toBe("![[a.png]]");
+  });
+
+  it("leaves escaped embeds, note embeds and code as text", () => {
+    expect(render("\\![[a.png]]\n")).not.toContain("<img");
+    expect(render("![[Other note]]\n")).toContain("![[Other note]]");
+    expect(render("`![[a.png]]`\n")).not.toContain("<img");
   });
 });

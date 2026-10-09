@@ -48,7 +48,7 @@ bun run typecheck
 bun run test           # not "bun test", which skips Vitest
 ```
 
-Stack: Tauri 2, React, TypeScript, Vite, Bun. CodeMirror 6, remark and diff-match-patch come in later milestones.
+Stack: Tauri 2, React, TypeScript, Vite, Bun, with remark and rehype for rendering. CodeMirror 6 and diff-match-patch come in later milestones.
 
 ## License
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { FileTree } from "./files/FileTree";
@@ -8,6 +8,7 @@ import { baseName } from "./fs/path";
 import { TauriFileSystem } from "./fs/tauri";
 import { classifyLink, resolveImage } from "./markdown/links";
 import { Markdown } from "./markdown/Markdown";
+import { imageSources } from "./markdown/pipeline";
 import { useTheme } from "./theme";
 import "./App.css";
 import "./markdown/markdown.css";
@@ -23,6 +24,17 @@ interface Workspace {
 interface OpenDocument {
   path: string;
   content: string;
+  /** Files found for the document's Obsidian embeds, keyed by the rendered img src. */
+  embeds: Map<string, string>;
+}
+
+/** The renderer URL-encodes srcs ("a%20b.png"); the vault search needs the file name. */
+function decodeEmbed(src: string): string {
+  try {
+    return decodeURIComponent(src);
+  } catch {
+    return src;
+  }
 }
 
 function App() {
@@ -47,7 +59,35 @@ function App() {
   }
 
   async function showFile(path: string) {
-    setDoc({ path, content: await fs.readFile(path) });
+    const content = await fs.readFile(path);
+    setDoc({ path, content, embeds: await allowImages(path, content) });
+  }
+
+  /**
+   * Opening a single file only lets the asset protocol load that file, so grant the
+   * images it links to before rendering, and find the files behind its Obsidian
+   * embeds. A failure only costs images, not the document.
+   */
+  async function allowImages(docPath: string, content: string): Promise<Map<string, string>> {
+    const { paths, embeds } = imageSources(content);
+    const images = paths
+      .map((src) => resolveImage(docPath, src))
+      .filter((image) => image.type === "file")
+      .map((image) => image.url);
+    if (images.length === 0 && embeds.length === 0) return new Map();
+    try {
+      const found = await invoke<(string | null)[]>("allow_document_images", {
+        document: docPath,
+        images,
+        embeds: embeds.map(decodeEmbed),
+      });
+      return new Map(
+        embeds.flatMap((src, i) => (found[i] ? [[src, found[i]] as [string, string]] : [])),
+      );
+    } catch (e) {
+      console.error(`Could not allow images for ${docPath}`, e);
+      return new Map();
+    }
   }
 
   const openFile = () =>
@@ -71,8 +111,10 @@ function App() {
       setDoc(null);
     });
 
-  function imageSrc(docPath: string, src: string): string {
-    const image = resolveImage(docPath, src);
+  function imageSrc(doc: OpenDocument, src: string): string {
+    const embed = doc.embeds.get(src);
+    if (embed) return convertFileSrc(embed);
+    const image = resolveImage(doc.path, src);
     return image.type === "file" ? convertFileSrc(image.url) : image.url;
   }
 
@@ -138,7 +180,7 @@ function App() {
           <article className="markdown-body">
             <Markdown
               source={doc.content}
-              resolveImageSrc={(src) => imageSrc(doc.path, src)}
+              resolveImageSrc={(src) => imageSrc(doc, src)}
               onLinkClick={(href) => followLink(doc.path, href)}
             />
           </article>
