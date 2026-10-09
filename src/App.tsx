@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { FileTree } from "./files/FileTree";
@@ -8,6 +8,7 @@ import { baseName } from "./fs/path";
 import { TauriFileSystem } from "./fs/tauri";
 import { classifyLink, resolveImage } from "./markdown/links";
 import { Markdown } from "./markdown/Markdown";
+import { imageSources } from "./markdown/pipeline";
 import { useTheme } from "./theme";
 import "./App.css";
 import "./markdown/markdown.css";
@@ -47,7 +48,26 @@ function App() {
   }
 
   async function showFile(path: string) {
-    setDoc({ path, content: await fs.readFile(path) });
+    const content = await fs.readFile(path);
+    await allowImages(path, content);
+    setDoc({ path, content });
+  }
+
+  /**
+   * Opening a single file only lets the asset protocol load that file, so grant the
+   * images it links to before rendering. A failure only costs images, not the document.
+   */
+  async function allowImages(docPath: string, content: string) {
+    const images = imageSources(content)
+      .map((src) => resolveImage(docPath, src))
+      .filter((image) => image.type === "file")
+      .map((image) => image.url);
+    if (images.length === 0) return;
+    try {
+      await invoke("allow_document_images", { document: docPath, images });
+    } catch (e) {
+      console.error(`Could not allow images for ${docPath}`, e);
+    }
   }
 
   const openFile = () =>

@@ -36,3 +36,17 @@ const processor = unified()
 export function markdownToHast(source: string): Root {
   return processor.runSync(processor.parse(source), source);
 }
+
+// Skips highlighting, which is most of the rendering cost; remark-rehype still resolves ![x][ref].
+const imageProcessor = unified().use(remarkParse).use(remarkGfm).use(remarkRehype);
+
+/** Every image src in the markdown, in document order, without duplicates. */
+export function imageSources(source: string): string[] {
+  const sources = new Set<string>();
+  visit(imageProcessor.runSync(imageProcessor.parse(source), source), "element", (node) => {
+    if (node.tagName === "img" && typeof node.properties.src === "string") {
+      sources.add(node.properties.src);
+    }
+  });
+  return [...sources];
+}

@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { visit } from "unist-util-visit";
 import { describe, expect, it } from "vitest";
 import { Markdown } from "./Markdown";
-import { markdownToHast } from "./pipeline";
+import { imageSources, markdownToHast } from "./pipeline";
 
 function render(source: string, resolveImageSrc = (src: string) => src): string {
   return renderToStaticMarkup(
@@ -93,5 +93,21 @@ describe("headings and images", () => {
     const html = render("![diagram](img/a.png)\n", (src) => `asset://${src}`);
     expect(html).toContain('src="asset://img/a.png"');
     expect(html).toContain('alt="diagram"');
+  });
+});
+
+describe("imageSources", () => {
+  it("lists inline and reference images once, in order", () => {
+    const source = "![a](img/a.png) ![b][fig]\n\n![a again](img/a.png)\n\n[fig]: ../b.svg\n";
+    expect(imageSources(source)).toEqual(["img/a.png", "../b.svg"]);
+  });
+
+  it("finds images inside lists and tables", () => {
+    const source = "- ![x](x.png)\n\n| c |\n| - |\n| ![y](y.jpg) |\n";
+    expect(imageSources(source)).toEqual(["x.png", "y.jpg"]);
+  });
+
+  it("ignores images in code and raw HTML", () => {
+    expect(imageSources('`![x](x.png)`\n\n<img src="y.png">\n')).toEqual([]);
   });
 });
