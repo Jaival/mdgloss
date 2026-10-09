@@ -1,12 +1,15 @@
-/* Reading layout for rendered markdown. Colours come from the theme variables in App.css. */
+/* Reading layout for rendered markdown. Colours are the design tokens in index.css;
+   the scale follows docs/DESIGN.md section 4. */
 .markdown-body {
-  max-width: 72ch;
-  margin: 0 auto;
-  font-size: 16px;
-  line-height: 1.65;
-  overflow-wrap: break-word;
+  /* Reading size. A future S/M/L setting only needs to change this. */
+  --reader-size: 17px;
 
-  --code-bg: rgb(129 139 152 / 12%);
+  /* 68ch of text, plus the px-8 side padding the article carries. */
+  max-width: calc(68ch + 4rem);
+  margin: 0 auto;
+  font-size: var(--reader-size);
+  line-height: 1.7;
+  overflow-wrap: break-word;
 }
 
 .markdown-body > :first-child {
@@ -19,25 +22,30 @@
 
 .markdown-body :is(h1, h2, h3, h4, h5, h6) {
   margin: 1.6em 0 0.6em;
-  line-height: 1.25;
+  font-family: var(--font-heading);
+  line-height: 1.4;
   font-weight: 600;
   scroll-margin-top: 16px;
 }
 
+/* 32/24/20px at the default 17px reading size */
 .markdown-body h1 {
-  font-size: 2em;
+  font-size: calc(var(--reader-size) * 32 / 17);
+  line-height: 1.2;
+  font-weight: 700;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--border);
 }
 
 .markdown-body h2 {
-  font-size: 1.5em;
+  font-size: calc(var(--reader-size) * 24 / 17);
+  line-height: 1.3;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--border);
 }
 
 .markdown-body h3 {
-  font-size: 1.25em;
+  font-size: calc(var(--reader-size) * 20 / 17);
 }
 
 .markdown-body h4 {
@@ -49,7 +57,7 @@
 }
 
 .markdown-body h6 {
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .markdown-body a {
@@ -86,7 +94,7 @@
 
 .markdown-body blockquote {
   padding: 0 1em;
-  color: var(--muted);
+  color: var(--muted-foreground);
   border-left: 0.25em solid var(--border);
 }
 
@@ -99,7 +107,7 @@
 
 .markdown-body img {
   max-width: 100%;
-  background: var(--bg);
+  background: var(--background);
 }
 
 .markdown-body .missing-image {
@@ -109,16 +117,16 @@
   max-width: 100%;
   padding: 0.6em 0.9em;
   border: 1px dashed var(--border);
-  border-radius: 6px;
-  background: var(--bg-subtle);
-  color: var(--muted);
+  border-radius: var(--radius-md);
+  background: var(--muted);
+  color: var(--muted-foreground);
   font-size: 0.875em;
   line-height: 1.4;
   vertical-align: middle;
 }
 
 .markdown-body .missing-image-label {
-  color: var(--error);
+  color: var(--destructive);
   font-weight: 600;
 }
 
@@ -128,22 +136,23 @@
 
 .markdown-body code,
 .markdown-body pre {
-  font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
-  font-size: 0.875em;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  /* 14.5px at the default 17px reading size */
+  font-size: calc(14.5em / 17);
 }
 
 .markdown-body :not(pre) > code {
   padding: 0.15em 0.35em;
-  border-radius: 6px;
-  background: var(--code-bg);
+  border-radius: var(--radius-sm);
+  background: var(--muted);
 }
 
 .markdown-body pre {
   padding: 1em;
   overflow: auto;
-  line-height: 1.45;
-  border-radius: 6px;
-  background: var(--bg-subtle);
+  line-height: 1.6;
+  border-radius: var(--radius-md);
+  background: var(--muted);
   border: 1px solid var(--border);
 }
 
@@ -168,16 +177,17 @@
 }
 
 .markdown-body tr:nth-child(2n) {
-  background: var(--bg-subtle);
+  background: var(--muted);
 }
 
 .markdown-body .footnotes {
   font-size: 0.875em;
-  color: var(--muted);
+  color: var(--muted-foreground);
   border-top: 1px solid var(--border);
 }
 
-/* Visually hidden "Footnotes" heading that GFM adds for screen readers */
+/* Visually hidden "Footnotes" heading that GFM adds for screen readers. Not left to
+   Tailwind's sr-only utility: the class only appears in rendered output, which it doesn't scan. */
 .markdown-body .sr-only {
   position: absolute;
   width: 1px;
@@ -187,8 +197,7 @@
 }
 
 /* Syntax highlighting (highlight.js classes), GitHub's palette */
-:root,
-:root[data-theme="light"] {
+:root {
   --hl-keyword: #cf222e;
   --hl-string: #0a3069;
   --hl-number: #0550ae;
@@ -202,7 +211,7 @@
   --hl-deletion: #82071e;
 }
 
-:root[data-theme="dark"] {
+.dark {
   --hl-keyword: #ff7b72;
   --hl-string: #a5d6ff;
   --hl-number: #79c0ff;
