@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="title">
+  <title id="title">mdgloss</title>
+  <style>
+    .m { stroke: #18181b; }
+    @media (prefers-color-scheme: dark) {
+      .m { stroke: #f0f0f0; }
+    }
+  </style>
+  <path d="M18 78 112 72 110 100 16 104Z" fill="#ffd33d"/>
+  <path class="m" d="M32 96V58a16 16 0 0 1 32 0v38M64 58a16 16 0 0 1 32 0v38" fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
