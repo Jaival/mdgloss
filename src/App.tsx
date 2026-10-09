@@ -2,6 +2,41 @@ import { useEffect, useRef, useState } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
+import { FileText, FolderOpen, Monitor, Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { FileTree } from "./files/FileTree";
 import { loadMarkdownTree, type TreeNode } from "./files/tree";
 import { baseName } from "./fs/path";
@@ -9,8 +44,7 @@ import { TauriFileSystem } from "./fs/tauri";
 import { classifyLink, resolveImage } from "./markdown/links";
 import { Markdown } from "./markdown/Markdown";
 import { imageSources } from "./markdown/pipeline";
-import { useTheme } from "./theme";
-import "./App.css";
+import { isThemeSetting, useTheme } from "./theme";
 import "./markdown/markdown.css";
 
 const fs = new TauriFileSystem();
@@ -42,7 +76,7 @@ function App() {
   const [doc, setDoc] = useState<OpenDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
-  const readerRef = useRef<HTMLElement>(null);
+  const readerRef = useRef<HTMLDivElement>(null);
 
   // Start each newly opened file at the top.
   useEffect(() => {
@@ -136,59 +170,137 @@ function App() {
     }
   }
 
+  const ThemeIcon = { system: Monitor, light: Sun, dark: Moon }[theme.setting];
+
   return (
-    <div className="app">
-      <header className="toolbar">
-        <span className="brand">mdgloss</span>
-        <button type="button" onClick={openFile}>
-          Open file
-        </button>
-        <button type="button" onClick={openFolder}>
-          Open folder
-        </button>
-        <button type="button" className="theme-toggle" onClick={theme.cycle}>
-          Theme: {theme.setting}
-        </button>
-        {error && (
-          <span className="error" role="alert">
-            {error}
+    <SidebarProvider
+      className="h-dvh min-h-0 overflow-hidden"
+      style={{ "--sidebar-width": "260px" } as React.CSSProperties}
+    >
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Open file" onClick={openFile}>
+                <FileText />
+                <span>Open file</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Open folder" onClick={openFolder}>
+                <FolderOpen />
+                <span>Open folder</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+        <SidebarContent>
+          {workspace && (
+            <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+              <SidebarGroupLabel>{workspace.title}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                {workspace.tree.length > 0 ? (
+                  <FileTree
+                    nodes={workspace.tree}
+                    selectedPath={doc?.path ?? null}
+                    onSelect={(path) => run(() => showFile(path))}
+                  />
+                ) : (
+                  <p className="px-2 text-xs text-muted-foreground">
+                    No markdown files in this folder.
+                  </p>
+                )}
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+        </SidebarContent>
+        <SidebarRail />
+      </Sidebar>
+
+      <SidebarInset className="min-w-0">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <SidebarTrigger aria-label="Toggle sidebar" />
+            </TooltipTrigger>
+            <TooltipContent>
+              Toggle sidebar{" "}
+              <KbdGroup>
+                <Kbd>Ctrl</Kbd>
+                <Kbd>B</Kbd>
+              </KbdGroup>
+            </TooltipContent>
+          </Tooltip>
+          <Separator orientation="vertical" className="h-4" />
+          <span className="min-w-0 truncate text-sm text-muted-foreground" title={doc?.path}>
+            {doc ? doc.path : "mdgloss"}
           </span>
-        )}
-      </header>
+          {error && (
+            <span className="min-w-0 truncate text-sm text-destructive" role="alert" title={error}>
+              {error}
+            </span>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="ml-auto" aria-label="Theme">
+                <ThemeIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Theme</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={theme.setting}
+                onValueChange={(value) => isThemeSetting(value) && theme.setSetting(value)}
+              >
+                <DropdownMenuRadioItem value="system">
+                  <Monitor />
+                  System
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="light">
+                  <Sun />
+                  Light
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="dark">
+                  <Moon />
+                  Dark
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </header>
 
-      <aside className="sidebar">
-        {workspace ? (
-          <>
-            <h2 className="sidebar-title">{workspace.title}</h2>
-            {workspace.tree.length > 0 ? (
-              <FileTree
-                nodes={workspace.tree}
-                selectedPath={doc?.path ?? null}
-                onSelect={(path) => run(() => showFile(path))}
+        <div className="min-h-0 flex-1 overflow-y-auto" ref={readerRef}>
+          {doc ? (
+            <article className="markdown-body px-8 py-12">
+              <Markdown
+                source={doc.content}
+                resolveImageSrc={(src) => imageSrc(doc, src)}
+                onLinkClick={(href) => followLink(doc.path, href)}
               />
-            ) : (
-              <p className="muted">No markdown files in this folder.</p>
-            )}
-          </>
-        ) : (
-          <p className="muted">Open a markdown file or folder to start reading.</p>
-        )}
-      </aside>
-
-      <main className="reader" ref={readerRef}>
-        {doc ? (
-          <article className="markdown-body">
-            <Markdown
-              source={doc.content}
-              resolveImageSrc={(src) => imageSrc(doc, src)}
-              onLinkClick={(href) => followLink(doc.path, href)}
-            />
-          </article>
-        ) : (
-          <p className="muted">{workspace ? "Pick a file from the list." : null}</p>
-        )}
-      </main>
-    </div>
+            </article>
+          ) : (
+            <Empty className="h-full">
+              <EmptyHeader>
+                <EmptyTitle>{workspace ? "No file open." : "No folder open."}</EmptyTitle>
+                <EmptyDescription>
+                  {workspace
+                    ? "Pick a file from the sidebar to start reading."
+                    : "Open a markdown file or folder to start reading."}
+                </EmptyDescription>
+              </EmptyHeader>
+              {!workspace && (
+                <EmptyContent>
+                  <Button onClick={openFolder}>
+                    <FolderOpen data-icon="inline-start" />
+                    Open folder
+                  </Button>
+                </EmptyContent>
+              )}
+            </Empty>
+          )}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 

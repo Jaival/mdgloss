@@ -2,18 +2,22 @@ import { useEffect, useState } from "react";
 
 export type ThemeSetting = "system" | "light" | "dark";
 
+export function isThemeSetting(value: string): value is ThemeSetting {
+  return (ORDER as string[]).includes(value);
+}
+
 const STORAGE_KEY = "mdgloss.theme";
 const ORDER: ThemeSetting[] = ["system", "light", "dark"];
 const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
 function loadSetting(): ThemeSetting {
   const stored = localStorage.getItem(STORAGE_KEY);
-  return ORDER.includes(stored as ThemeSetting) ? (stored as ThemeSetting) : "system";
+  return stored !== null && isThemeSetting(stored) ? stored : "system";
 }
 
 /**
- * Light, dark or follow the OS. Sets data-theme="light|dark" on <html>, which the
- * stylesheets key off, and remembers the choice between sessions.
+ * Light, dark or follow the OS. Toggles the .dark class on <html>, which swaps the
+ * design tokens, and remembers the choice between sessions.
  */
 export function useTheme() {
   const [setting, setSetting] = useState<ThemeSetting>(loadSetting);
@@ -28,11 +32,11 @@ export function useTheme() {
   const resolved = setting === "system" ? (systemDark ? "dark" : "light") : setting;
 
   useEffect(() => {
-    document.documentElement.dataset.theme = resolved;
+    const root = document.documentElement;
+    root.classList.toggle("dark", resolved === "dark");
+    root.style.colorScheme = resolved;
     localStorage.setItem(STORAGE_KEY, setting);
   }, [resolved, setting]);
 
-  const cycle = () => setSetting(ORDER[(ORDER.indexOf(setting) + 1) % ORDER.length]);
-
-  return { setting, cycle };
+  return { setting, setSetting };
 }
