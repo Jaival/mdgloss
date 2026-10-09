@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { visit } from "unist-util-visit";
 import { describe, expect, it } from "vitest";
-import { Markdown } from "./Markdown";
+import { Markdown, MissingImage } from "./Markdown";
 import { imageSources, markdownToHast } from "./pipeline";
 
 function render(source: string, resolveImageSrc = (src: string) => src): string {
@@ -93,6 +93,29 @@ describe("headings and images", () => {
     const html = render("![diagram](img/a.png)\n", (src) => `asset://${src}`);
     expect(html).toContain('src="asset://img/a.png"');
     expect(html).toContain('alt="diagram"');
+  });
+});
+
+describe("missing images", () => {
+  const html = renderToStaticMarkup(
+    createElement(MissingImage, {
+      src: "docs/process%20states.png",
+      alt: "Process states",
+      width: 300,
+      "data-source-start": 4,
+      "data-source-end": 40,
+    } as Parameters<typeof MissingImage>[0]),
+  );
+
+  it("names the alt text and the path as written", () => {
+    expect(html).toContain("Image not found");
+    expect(html).toContain("Process states");
+    expect(html).toContain("<code>docs/process states.png</code>");
+  });
+
+  it("keeps the source range but not the size", () => {
+    expect(html).toContain('data-source-start="4" data-source-end="40"');
+    expect(html).not.toContain("width");
   });
 });
 
