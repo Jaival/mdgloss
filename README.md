@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.svg" alt="mdgloss logo" width="128" height="128">
+</p>
+
 # mdgloss
 
 A reader-first markdown app for Windows, macOS and the web. Open any markdown file or folder, then highlight, comment and bookmark as you read. Your markdown files are never changed: annotations live in a small `.mdgloss/` folder next to them, so they travel with the folder through git or Dropbox.
