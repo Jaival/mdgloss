@@ -1,6 +1,6 @@
 # mdgloss project spec
 
-Version 1.1 of this spec, 30 September 2026. The project name is mdgloss.
+Version 1.2 of this spec, 30 September 2026. The project name is mdgloss.
 
 ## What it is
 
@@ -155,25 +155,26 @@ In edit mode, CodeMirror maps every highlight position through each change as th
 - macOS: Developer ID signing and notarization (Apple Developer Program, about $99 a year).
 - Windows: code signing certificate or a signing service. Compare prices before March.
 - Auto-update through the Tauri updater, with the manifest hosted on GitHub Releases. Its download count is the weekly-usage proxy.
-- The alpha is an unsigned local build for personal use only.
+- Unsigned release builds from week 1: every `v*` tag produces Windows and macOS installers on a draft pre-release. The auto-updater follows in week 7. Only OS code signing waits until March, because it costs money and the only user before then is me.
+- The Tauri updater signs update files with its own free key pair (`tauri signer generate`), separate from OS code signing, so auto-updates work before the app is signed.
 
 ## Plan
 
-Budget: 5 to 10 hours a week. The alpha date requires close to 9 hours a week through November. If a week goes badly, cut from the "stretch" items first, then move the alpha by one week rather than skipping tests.
+Budget: 5 to 10 hours a week. The alpha date requires close to 9 hours a week through November. Moving the release pipeline into week 1 uses most of the week 8 buffer, so there is little slack left before the alpha. If a week goes badly, cut from the "stretch" items first, then move the alpha by one week rather than skipping tests.
 
 ### Phase 1: personal alpha (ends Sunday 29 November 2026)
 
-| Week | Dates          | Goal                   | Done when                                                                                                                                                                         |
-| ---- | -------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | 30 Sep – 4 Oct | Setup                  | Name picked (mdgloss), repo public with MIT licence, Tauri 2 + React + TS + Vite scaffold runs, ESLint and Prettier set up, GitHub Actions runs typecheck and tests on every push |
-| 1    | 5 – 11 Oct     | Files                  | `FileSystem` interface and Tauri adapter, open file and open folder dialogs, file tree listing `.md` files                                                                        |
-| 2    | 12 – 18 Oct    | Rendering              | remark/rehype pipeline with GFM, code highlighting, relative images; source offsets on elements; readable layout, light and dark theme                                            |
-| 3    | 19 – 25 Oct    | Selection mapping      | Selection in preview converts to source offsets and a quote/prefix/suffix; unit tests on at least 10 fixture cases                                                                |
-| 4    | 26 Oct – 1 Nov | Highlights and storage | Highlights render across element boundaries, colours, delete; sidecar read/write with `schemaVersion`; fallback storage for single files                                          |
-| 5    | 2 – 8 Nov      | Comments and sidebar   | Comment popover on highlights; sidebar lists the current file's highlights; click to scroll                                                                                       |
-| 6    | 9 – 15 Nov     | Live reload            | File watching, re-render on change, exact re-anchoring (steps 1 and 2); anything unmatched goes to a simple orphaned list; tests with edited fixtures                             |
-| 7    | 16 – 22 Nov    | Dogfood                | Use it on real course material every day; fix what breaks; keyboard shortcuts; remember last opened folder                                                                        |
-| 8    | 23 – 29 Nov    | Alpha                  | Buffer week. Tag `v0.1.0-alpha`, install the build on your own machine, write down the 10 most annoying problems                                                                  |
+| Week | Dates          | Goal                       | Done when                                                                                                                                                                                                      |
+| ---- | -------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | 30 Sep – 4 Oct | Setup                      | Name picked (mdgloss), repo public with MIT licence, Tauri 2 + React + TS + Vite scaffold runs, ESLint and Prettier set up, GitHub Actions runs typecheck and tests on every push                              |
+| 1    | 5 – 11 Oct     | Release pipeline and files | Pushing a `v*` tag builds unsigned Windows and macOS installers in GitHub Actions and attaches them to a draft pre-release (test with `v0.0.1`); `FileSystem` Tauri adapter; open file and open folder dialogs |
+| 2    | 12 – 18 Oct    | File tree and rendering    | File tree listing `.md` files; remark/rehype pipeline with GFM, code highlighting, relative images; source offsets on elements; readable layout, light and dark theme                                          |
+| 3    | 19 – 25 Oct    | Selection mapping          | Selection in preview converts to source offsets and a quote/prefix/suffix; unit tests on at least 10 fixture cases                                                                                             |
+| 4    | 26 Oct – 1 Nov | Highlights and storage     | Highlights render across element boundaries, colours, delete; sidecar read/write with `schemaVersion`; fallback storage for single files                                                                       |
+| 5    | 2 – 8 Nov      | Comments and sidebar       | Comment popover on highlights; sidebar lists the current file's highlights; click to scroll                                                                                                                    |
+| 6    | 9 – 15 Nov     | Live reload                | File watching, re-render on change, exact re-anchoring (steps 1 and 2); anything unmatched goes to a simple orphaned list; tests with edited fixtures                                                          |
+| 7    | 16 – 22 Nov    | Dogfood and updates        | Use it on real course material every day; fix what breaks; Tauri updater checks GitHub Releases, so every new tag reaches your installed alpha; remember last opened folder                                    |
+| 8    | 23 – 29 Nov    | Alpha                      | Tag `v0.1.0-alpha` and install it from the release page; keyboard shortcuts if time allows; write down the 10 most annoying problems                                                                           |
 
 Moved out of the alpha to make November possible: bookmarks, last-read position, fuzzy matching, edit mode and export. They follow in December and January.
 
@@ -194,13 +195,13 @@ Weeks 18 to 21, 1 to 28 February. Adjust these dates to your real exam period. T
 
 ### Phase 4: ship (1 March – 18 April 2027)
 
-| Week  | Dates          | Goal              | Done when                                                                                                                                       |
-| ----- | -------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 22–23 | 1 – 14 Mar     | Packaging         | GitHub Actions builds signed Windows (NSIS or MSI) and macOS (universal DMG, notarized) on each tag; Tauri updater working from GitHub Releases |
-| 24–25 | 15 – 28 Mar    | Web demo          | `BrowserFileSystem` adapter, single-file fallback for Safari and Firefox, `DemoFileSystem` with 3 to 4 pre-annotated sample docs, deployed      |
-| 26    | 29 Mar – 4 Apr | Launch material   | README with a demo GIF, short landing page, private beta with 5 to 10 people (classmates and developer friends)                                 |
-| 27    | 5 – 11 Apr     | Release candidate | Fix beta feedback, write the Show HN post, tag `v1.0.0`                                                                                         |
-| 28    | 12 – 18 Apr    | Launch            | Post on Tuesday 13 April: Show HN, then Reddit and LinkedIn. Spend the week answering comments and fixing urgent bugs                           |
+| Week  | Dates          | Goal              | Done when                                                                                                                                  |
+| ----- | -------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 22–23 | 1 – 14 Mar     | Signing           | Add Apple Developer ID signing and notarization and Windows code signing to the existing release workflow                                  |
+| 24–25 | 15 – 28 Mar    | Web demo          | `BrowserFileSystem` adapter, single-file fallback for Safari and Firefox, `DemoFileSystem` with 3 to 4 pre-annotated sample docs, deployed |
+| 26    | 29 Mar – 4 Apr | Launch material   | README with a demo GIF, short landing page, private beta with 5 to 10 people (classmates and developer friends)                            |
+| 27    | 5 – 11 Apr     | Release candidate | Fix beta feedback, write the Show HN post, tag `v1.0.0`                                                                                    |
+| 28    | 12 – 18 Apr    | Launch            | Post on Tuesday 13 April: Show HN, then Reddit and LinkedIn. Spend the week answering comments and fixing urgent bugs                      |
 
 ## Success criteria
 
