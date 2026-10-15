@@ -10,8 +10,22 @@ permissions:
   contents: write
 
 jobs:
+  # Installers are named after the app version, not the tag: the v0.0.2 release
+  # shipped mdgloss_0.1.0 files. Fail before the slow builds start.
+  check-version:
+    name: Check tag matches app version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          for file in package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml; do
+            v=$(node -p "require('fs').readFileSync('$file', 'utf8').match(/\"?version\"?\s*[:=]\s*\"([^\"]+)\"/)[1]")
+            [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME but $file says '$v'"; exit 1; }
+          done
+
   build:
     name: Build (${{ matrix.name }})
+    needs: check-version
     strategy:
       fail-fast: false
       matrix:
