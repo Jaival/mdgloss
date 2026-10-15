@@ -28,6 +28,8 @@ export function remarkWikiEmbeds() {
       // Escapes and entities make the value differ from the source, so each match is
       // found again in the source to get its offsets.
       let cursor = start;
+      // Where node.value[last] is in the source.
+      let lastInSource = start;
 
       for (const match of node.value.matchAll(EMBED)) {
         const at = source.indexOf(match[0], cursor);
@@ -36,21 +38,29 @@ export function remarkWikiEmbeds() {
         const target = match[1].trim();
         if (source[at - 1] === "\\" || !IMAGE_EXTENSION.test(target)) continue;
 
-        if (match.index > last) parts.push(textSlice(node.value.slice(last, match.index)));
+        if (match.index > last)
+          parts.push(textSlice(node.value.slice(last, match.index), source, lastInSource, at));
         parts.push(embedImage(target, match[2]?.trim(), source, at, cursor));
         last = match.index + match[0].length;
+        lastInSource = cursor;
       }
 
       if (parts.length === 0) return;
-      if (last < node.value.length) parts.push(textSlice(node.value.slice(last)));
+      if (last < node.value.length)
+        parts.push(textSlice(node.value.slice(last), source, lastInSource, end));
       parent.children.splice(index, 1, ...parts);
       return [SKIP, index + parts.length];
     });
   };
 }
 
-function textSlice(value: string): Text {
-  return { type: "text", value };
+/** Keeps a source range on the text around an embed, for selection mapping. */
+function textSlice(value: string, source: string, start: number, end: number): Text {
+  return {
+    type: "text",
+    value,
+    position: { start: pointAt(source, start), end: pointAt(source, end) },
+  };
 }
 
 function embedImage(
