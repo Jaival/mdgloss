@@ -54,6 +54,12 @@ bun run test           # not "bun test", which skips Vitest
 
 Stack: Tauri 2, React, TypeScript, Vite, Bun, with remark and rehype for rendering. CodeMirror 6 and diff-match-patch come in later milestones.
 
+More docs:
+
+- [Architecture](docs/ARCHITECTURE.md): how the code is put together, from file access to selection mapping
+- [DevOps](docs/DEVOPS.md): local setup, CI, branches, dependency updates
+- [Releasing](docs/RELEASING.md): how to cut a release and change the version (`bun run version:set`)
+
 ## License
 
 [MIT](LICENSE)
