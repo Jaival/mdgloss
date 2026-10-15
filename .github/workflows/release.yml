@@ -16,7 +16,7 @@ jobs:
     name: Check tag matches app version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: |
           for file in package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml; do
             v=$(node -p "require('fs').readFileSync('$file', 'utf8').match(/\"?version\"?\s*[:=]\s*\"([^\"]+)\"/)[1]")
@@ -40,7 +40,7 @@ jobs:
             args: ""
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
