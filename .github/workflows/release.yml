@@ -1,7 +1,12 @@
 name: Release
 
 # Push a tag like v0.0.1 to build unsigned Windows and macOS installers
-# and attach them to a draft pre-release. Code signing is added in March.
+# and attach them to a draft release. Code signing is added in March.
+#
+# Releases are published as normal releases, not GitHub pre-releases, even
+# though the app is pre-alpha: GitHub never marks a pre-release as Latest, so
+# it wouldn't show on the repo page and the updater (releases/latest) would
+# never see it. The title and notes say pre-alpha instead.
 #
 # Pushes to main that change Rust dependencies, and a weekly schedule, run the
 # same builds without bundling or uploading. That keeps the Rust cache warm:
@@ -69,7 +74,7 @@ jobs:
             body=$(printf '%s\n\n%s\n' "$(cat .github/release-header.md)" "$notes")
             id=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
               -f tag_name="$TAG" -f name="mdgloss $TAG" -f body="$body" \
-              -F draft=true -F prerelease=true --jq .id)
+              -F draft=true -F prerelease=false -f make_latest=true --jq .id)
           fi
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
@@ -124,5 +129,4 @@ jobs:
           releaseId: ${{ needs.create-release.outputs.id }}
           tagName: ${{ github.ref_name }}
           releaseDraft: true
-          prerelease: true
           args: ${{ matrix.args }}

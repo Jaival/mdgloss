@@ -7,7 +7,7 @@ How to cut a release, where the version lives, and what to do when a release goe
 Pushing a tag that starts with `v` runs [`.github/workflows/release.yml`](../.github/workflows/release.yml):
 
 1. **Check tag matches app version** (Ubuntu, a few seconds). Reads the version from `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`. If any of them differs from the tag, the release stops here.
-2. **Create draft release** (Ubuntu, a few seconds). Creates a **draft pre-release** with GitHub's generated notes: the PRs merged since the previous tag, with dependency bumps in their own section (sections are set in [`.github/release.yml`](../.github/release.yml)). The install warning at the top comes from [`.github/release-header.md`](../.github/release-header.md).
+2. **Create draft release** (Ubuntu, a few seconds). Creates a **draft release** with GitHub's generated notes: the PRs merged since the previous tag, with dependency bumps in their own section (sections are set in [`.github/release.yml`](../.github/release.yml)). The install warning at the top comes from [`.github/release-header.md`](../.github/release-header.md).
 3. **Build** (macOS and Windows in parallel). [`tauri-action`](https://github.com/tauri-apps/tauri-action) builds the app and uploads the installers to that draft. With a warm Rust cache this takes about 4–5 minutes; with a cold one, about 10.
 
 Nobody sees the draft until you publish it.
@@ -109,7 +109,7 @@ The spec plans to tag the alpha as `v0.1.0-alpha`, which would fail the Windows 
 
 5. **Test the installers before publishing.** Download them from the draft (`gh release download v0.0.3 --dir /tmp/mdgloss-0.0.3`), install on Windows (and on a Mac if you have one), open a folder of notes, and check that the version in the file names is right.
 
-6. **Review and publish the draft.** The notes already list the merged PRs. Tidy them if needed, for example by removing the "Release 0.0.3" PR or adding a summary at the top (`gh release view v0.0.3 --web`). Leave **pre-release** ticked until 1.0.0. Publishing makes the release visible, and once the updater is in (week 7) it also sends the update to installed copies.
+6. **Review and publish the draft.** The notes already list the merged PRs. Tidy them if needed, for example by removing the "Release 0.0.3" PR or adding a summary at the top (`gh release view v0.0.3 --web`). Leave **pre-release** unticked and **Set as the latest release** ticked: GitHub never makes a pre-release the latest release, so it wouldn't appear in the repo's Releases box and the updater wouldn't see it. The pre-alpha warning in the notes and the README's pre-release badge say what stage the app is at. Publishing makes the release visible, and once the updater is in (week 7) it also sends the update to installed copies.
 
 7. **Note it in the build log** (`notes/linkedin-log.md`).
 
@@ -150,7 +150,7 @@ The Tauri updater checks GitHub Releases for a newer version. Its download count
 
 Things to know before relying on it:
 
-- `releases/latest` skips drafts **and pre-releases**. While releases are marked pre-release, the updater won't see them. Either publish alpha releases as normal releases, or point the endpoint at a `latest.json` you host somewhere else.
+- `releases/latest` skips drafts **and pre-releases**. That's why releases are published as normal releases from v0.0.3 on (v0.0.1 and v0.0.2 stay marked pre-release). Don't tick pre-release on a release the updater should offer.
 - The updater compares versions as semver. It never offers a lower version, so don't go back down after a mistake.
 
 ### Signing (March 2027)

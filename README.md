@@ -4,6 +4,8 @@
 
 # mdgloss
 
+[![Pre-release](https://img.shields.io/github/v/release/Jaival/mdgloss?include_prereleases&label=pre-release&color=orange)](https://github.com/Jaival/mdgloss/releases/latest)
+
 A reader-first markdown app for Windows, macOS and the web. Open any markdown file or folder, then highlight, comment and bookmark as you read. Your markdown files are never changed: annotations live in a small `.mdgloss/` folder next to them, so they travel with the folder through git or Dropbox.
 
 > **Status:** pre-alpha. A personal alpha is planned for 29 November 2026 and a public release for April 2027. The week-by-week plan is in [docs/SPEC.md](docs/SPEC.md).
