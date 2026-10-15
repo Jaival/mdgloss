@@ -2,9 +2,26 @@ name: Release
 
 # Push a tag like v0.0.1 to build unsigned Windows and macOS installers
 # and attach them to a draft pre-release. Code signing is added in March.
+#
+# Pushes to main that change Rust dependencies, and a weekly schedule, run the
+# same builds without bundling or uploading. That keeps the Rust cache warm:
+# a tag run can only restore caches saved on main, so without this every
+# release compiled all dependencies from scratch.
 on:
   push:
     tags: ["v*"]
+    branches: [main]
+    paths:
+      - src-tauri/Cargo.lock
+      - src-tauri/Cargo.toml
+      - .github/workflows/release.yml
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 permissions:
   contents: write
@@ -14,18 +31,53 @@ jobs:
   # shipped mdgloss_0.1.0 files. Fail before the slow builds start.
   check-version:
     name: Check tag matches app version
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: |
           for file in package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml; do
             v=$(node -p "require('fs').readFileSync('$file', 'utf8').match(/\"?version\"?\s*[:=]\s*\"([^\"]+)\"/)[1]")
             [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME but $file says '$v'"; exit 1; }
           done
 
+  # Create the draft once, before the builds, so the notes are generated once
+  # and both builds upload to the same release.
+  create-release:
+    name: Create draft release
+    needs: check-version
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Create draft release with generated notes
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Re-runs reuse the draft made by the first attempt
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -n1)
+          if [ -z "$id" ]; then
+            prev=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)
+            notes=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+              -f tag_name="$TAG" ${prev:+-f previous_tag_name="$prev"} --jq .body)
+            body=$(printf '%s\n\n%s\n' "$(cat .github/release-header.md)" "$notes")
+            id=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$TAG" -f name="mdgloss $TAG" -f body="$body" \
+              -F draft=true -F prerelease=true --jq .id)
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build (${{ matrix.name }})
-    needs: check-version
+    needs: create-release
+    # On main and schedule runs create-release is skipped; still build to warm the cache
+    if: ${{ !failure() && !cancelled() }}
     strategy:
       fail-fast: false
       matrix:
@@ -40,7 +92,7 @@ jobs:
             args: ""
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -50,23 +102,27 @@ jobs:
         with:
           targets: ${{ matrix.rust_targets }}
 
+      # Tag runs can't share caches with each other, so only main saves
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          key: ${{ matrix.os }}
+          save-if: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
       - run: bun install --frozen-lockfile
 
-      - uses: tauri-apps/tauri-action@v0
+      - name: Build without bundling (cache warm-up)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: bun run tauri build ${{ matrix.args }} --no-bundle
+
+      - uses: tauri-apps/tauri-action@v1
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tauriScript: bun run tauri
+          releaseId: ${{ needs.create-release.outputs.id }}
           tagName: ${{ github.ref_name }}
-          releaseName: mdgloss ${{ github.ref_name }}
-          releaseBody: |
-            Unsigned pre-alpha build for testing. Windows SmartScreen and macOS Gatekeeper will warn before opening it.
-            macOS: right-click the app, choose Open, then Open again.
-            Windows: More info, then Run anyway.
           releaseDraft: true
           prerelease: true
           args: ${{ matrix.args }}

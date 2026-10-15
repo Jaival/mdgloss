@@ -1,0 +1,9 @@
+# Sections for GitHub's generated release notes (used by the release workflow)
+changelog:
+  categories:
+    - title: Changes
+      labels: ["*"]
+      exclude:
+        labels: [dependencies]
+    - title: Dependency updates
+      labels: [dependencies]
