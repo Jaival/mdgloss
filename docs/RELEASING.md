@@ -7,9 +7,14 @@ How to cut a release, where the version lives, and what to do when a release goe
 Pushing a tag that starts with `v` runs [`.github/workflows/release.yml`](../.github/workflows/release.yml):
 
 1. **Check tag matches app version** (Ubuntu, a few seconds). Reads the version from `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`. If any of them differs from the tag, the release stops here.
-2. **Build** (macOS and Windows in parallel, about 8 minutes). [`tauri-action`](https://github.com/tauri-apps/tauri-action) builds the app and uploads the installers to a GitHub release for the tag.
+2. **Create draft release** (Ubuntu, a few seconds). Creates a **draft pre-release** with GitHub's generated notes: the PRs merged since the previous tag, with dependency bumps in their own section (sections are set in [`.github/release.yml`](../.github/release.yml)). The install warning at the top comes from [`.github/release-header.md`](../.github/release-header.md).
+3. **Build** (macOS and Windows in parallel). [`tauri-action`](https://github.com/tauri-apps/tauri-action) builds the app and uploads the installers to that draft. With a warm Rust cache this takes about 4–5 minutes; with a cold one, about 10.
 
-The release is created as a **draft pre-release**. Nobody sees it until you publish it.
+Nobody sees the draft until you publish it.
+
+### Why the cache is warmed from `main`
+
+A tag run can restore Rust caches saved on `main`, but not caches saved by another tag. So the same workflow also runs on pushes to `main` that change `Cargo.lock`, `Cargo.toml` or `release.yml`, every Monday, and on demand (`gh workflow run Release`). Those runs build both platforms with `--no-bundle`, upload nothing and save the cache. Tag runs only restore it. If a release is slow, check that the last warm-up run on `main` passed, or start one before tagging.
 
 | Platform | Files                                                                                       |
 | -------- | ------------------------------------------------------------------------------------------- |
@@ -104,7 +109,7 @@ The spec plans to tag the alpha as `v0.1.0-alpha`, which would fail the Windows 
 
 5. **Test the installers before publishing.** Download them from the draft (`gh release download v0.0.3 --dir /tmp/mdgloss-0.0.3`), install on Windows (and on a Mac if you have one), open a folder of notes, and check that the version in the file names is right.
 
-6. **Edit and publish the draft.** Add what changed, with links to the PRs (`gh release view v0.0.3 --web`). Leave **pre-release** ticked until 1.0.0. Publishing makes the release visible, and once the updater is in (week 7) it also sends the update to installed copies.
+6. **Review and publish the draft.** The notes already list the merged PRs. Tidy them if needed, for example by removing the "Release 0.0.3" PR or adding a summary at the top (`gh release view v0.0.3 --web`). Leave **pre-release** ticked until 1.0.0. Publishing makes the release visible, and once the updater is in (week 7) it also sends the update to installed copies.
 
 7. **Note it in the build log** (`notes/linkedin-log.md`).
 

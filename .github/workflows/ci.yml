@@ -54,9 +54,11 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      # PR caches can't be reused by other branches and push main's cache out of the 10 GB limit
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: cargo fmt
         working-directory: src-tauri

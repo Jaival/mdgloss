@@ -58,7 +58,7 @@ Tests that need a DOM put `// @vitest-environment happy-dom` at the top of the f
 - `--frozen-lockfile` fails the job if `package.json` and `bun.lock` disagree. Commit `bun.lock` with every dependency change.
 - Clippy warnings are errors.
 - The Rust job runs on Linux. That catches Rust errors, but Windows and macOS only get built in the release workflow. Linux isn't a release target for version 1.
-- Rust builds are cached with `Swatinem/rust-cache` (keyed on `Cargo.lock`), which brings the job down to about 1–2 minutes when the cache is warm.
+- Rust builds are cached with `Swatinem/rust-cache` (keyed on `Cargo.lock`), which brings the job down to about 1–2 minutes when the cache is warm. Only `main` saves the cache. A PR's cache could only be reused by that PR, and it would push `main`'s cache out of the repository's 10 GB limit.
 
 The workflow token is read-only (`permissions: contents: read`). Only the release workflow can write, and only to releases.
 
@@ -87,13 +87,13 @@ Major versions arrive as separate PRs. How to handle them:
 
 - **Grouped minor/patch PRs:** merge when CI is green. A newer grouped PR replaces the older one, so close superseded ones.
 - **Major versions:** read the changelog first. Example: TypeScript 7 (#2) fails CI because `typescript-eslint` doesn't support TS 7 yet. Leave it open, or close it and add an `ignore` rule for `typescript` major versions until the linter catches up.
-- **GitHub Actions:** keep both workflows on the same major version. `release.yml` still uses `actions/checkout@v4` and `tauri-action@v0` while `ci.yml` uses `checkout@v7`. A Dependabot PR is open for each (#5, #6). `tauri-action` v1 is a major change: try it on a throwaway tag (see below) before relying on it.
+- **GitHub Actions:** keep both workflows on the same major version. Both use `actions/checkout@v7`, and `release.yml` uses `tauri-action@v1`. Check a new major version of `tauri-action` on a throwaway tag (see below) before relying on it.
 
 After merging any dependency PR, run `bun install` locally.
 
 ## Testing the release workflow
 
-Release builds only run on tags, so changes to `release.yml` aren't tested by CI. To try one:
+Full release builds only run on tags. Merging a change to `release.yml` runs the cache warm-up builds on `main`, which catches build errors but not the release and upload steps. To try one:
 
 1. Merge the change to `main`.
 2. Set a throwaway version through a PR, or reuse the next real version.
