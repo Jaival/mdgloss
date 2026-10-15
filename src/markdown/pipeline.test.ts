@@ -84,6 +84,38 @@ describe("source offsets", () => {
   });
 });
 
+describe("text offsets", () => {
+  /** The source range of every marked element, in document order. */
+  function textRanges(source: string): string[] {
+    const ranges: string[] = [];
+    visit(markdownToHast(source), "element", (node) => {
+      const { dataTextStart: start, dataTextEnd: end } = node.properties;
+      if (typeof start === "number" && typeof end === "number")
+        ranges.push(`${node.tagName}:${source.slice(start, end)}`);
+    });
+    return ranges;
+  }
+
+  it("marks a lone text on its element and wraps mixed text in spans", () => {
+    expect(textRanges("# Title\n\nA *b* c\n")).toEqual(["h1:Title", "span:A ", "em:b", "span: c"]);
+  });
+
+  it("marks fenced code without its fences", () => {
+    expect(textRanges("```ts\nconst x = 1;\n```\n")).toEqual(["code:const x = 1;\n"]);
+    expect(textRanges("~~~\nunclosed")).toEqual(["code:unclosed"]);
+    expect(textRanges("> ```\n> a\n> ```\n")).toEqual(["code:> a\n"]);
+  });
+
+  it("marks indented code and inline code", () => {
+    expect(textRanges("    indented\n")).toEqual(["code:    indented"]);
+    expect(textRanges("x `y` z\n")).toEqual(["span:x ", "code:`y`", "span: z"]);
+  });
+
+  it("leaves generated footnote text unmarked", () => {
+    expect(textRanges("a[^1]\n\n[^1]: note\n")).toEqual(["span:a", "span:note"]);
+  });
+});
+
 describe("headings and images", () => {
   it("gives headings GitHub-style ids for anchor links", () => {
     expect(render("## Priority Scheduling\n")).toContain('id="priority-scheduling"');
@@ -159,10 +191,10 @@ describe("Obsidian image embeds", () => {
     expect(sourceOf(source, second)).toBe("![[b.jpg|300x200]]");
   });
 
-  it("keeps the text around an embed", () => {
+  it("keeps the text around an embed, with its source range", () => {
     const html = render(source);
-    expect(html).toMatch(/<p[^>]*>Intro <img/);
-    expect(html).toMatch(/> and <strong/);
+    expect(html).toContain('<span data-text-start="0" data-text-end="6">Intro </span><img');
+    expect(html).toContain('<span data-text-start="28" data-text-end="33"> and </span><strong');
   });
 
   it("reads a size or an alias after the pipe", () => {
