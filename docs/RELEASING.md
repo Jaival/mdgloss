@@ -1,0 +1,156 @@
+# Releasing mdgloss
+
+How to cut a release, where the version lives, and what to do when a release goes wrong. For CI, secrets and dependency updates, see [DEVOPS.md](DEVOPS.md).
+
+## What a release is today
+
+Pushing a tag that starts with `v` runs [`.github/workflows/release.yml`](../.github/workflows/release.yml):
+
+1. **Check tag matches app version** (Ubuntu, a few seconds). Reads the version from `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`. If any of them differs from the tag, the release stops here.
+2. **Build** (macOS and Windows in parallel, about 8 minutes). [`tauri-action`](https://github.com/tauri-apps/tauri-action) builds the app and uploads the installers to a GitHub release for the tag.
+
+The release is created as a **draft pre-release**. Nobody sees it until you publish it.
+
+| Platform | Files                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------- |
+| Windows  | `mdgloss_<version>_x64-setup.exe` (NSIS), `mdgloss_<version>_x64_en-US.msi`                 |
+| macOS    | `mdgloss_<version>_universal.dmg` (Apple Silicon and Intel), `mdgloss_universal.app.tar.gz` |
+
+The builds are **unsigned** until March 2027 (see [Signing](#signing-march-2027)). Windows SmartScreen and macOS Gatekeeper warn before opening them, and the release notes say how to get past the warning.
+
+Installer file names come from the version in `tauri.conf.json`, **not** from the tag. That's why the versions have to match: the v0.0.2 release went out with `mdgloss_0.1.0_*` files before the check existed.
+
+## Where the version lives
+
+| File                        | Field                              | Used for                                 |
+| --------------------------- | ---------------------------------- | ---------------------------------------- |
+| `package.json`              | `"version"`                        | The frontend package                     |
+| `src-tauri/tauri.conf.json` | `"version"`                        | App version, installer names, About info |
+| `src-tauri/Cargo.toml`      | `version` under `[package]`        | The Rust crate                           |
+| `src-tauri/Cargo.lock`      | `version` of the `mdgloss` package | Follows Cargo.toml                       |
+
+Don't edit them by hand. Run:
+
+```bash
+bun run version:set 0.0.3
+```
+
+[`scripts/set-version.mjs`](../scripts/set-version.mjs) updates all four files. It refuses versions the Windows installer can't build (see below). Running it again with the same version changes nothing.
+
+## Choosing a version
+
+mdgloss uses [semantic versioning](https://semver.org) with a leading `v` on tags (`v0.0.3`).
+
+| Stage                           | Versions | Example tags       |
+| ------------------------------- | -------- | ------------------ |
+| Pre-alpha, weekly builds        | `0.0.x`  | `v0.0.3`, `v0.0.4` |
+| Personal alpha (29 Nov 2026)    | `0.1.0`  | `v0.1.0`           |
+| Feature work and beta (Dec–Apr) | `0.x.y`  | `v0.2.0`, `v0.2.1` |
+| Public launch (13 Apr 2027)     | `1.0.0`  | `v1.0.0`           |
+
+Bump the patch number for fixes and weekly builds, and the minor number for a milestone. Every version you tag must be higher than the last one, or the auto-updater (week 7) won't offer it.
+
+### The Windows installer's version rules
+
+The `.msi` build is stricter than semver:
+
+- Major and minor go up to **255**, patch up to **65,535**.
+- A pre-release part must be **numbers only**. `0.1.0-1` works. `0.1.0-alpha` fails the Windows build.
+
+The spec plans to tag the alpha as `v0.1.0-alpha`, which would fail the Windows build. Pick one:
+
+1. **Recommended:** tag it `v0.1.0`. Call it the alpha in the release title and notes. Nothing is public yet, so the version number doesn't have to say "alpha".
+2. Keep `0.1.0-alpha` and add an MSI-only version to `tauri.conf.json`:
+
+   ```json
+   "bundle": { "windows": { "wix": { "version": "0.1.0" } } }
+   ```
+
+   This field has to be updated by hand for every pre-release, and `version:set` refuses non-numeric pre-releases, so you'd edit the files yourself.
+
+## Cutting a release, step by step
+
+1. **Start from a green `main`.** Everything you want in the release is merged and CI has passed on `main`.
+
+   ```bash
+   git switch main && git pull
+   ```
+
+2. **Bump the version on a branch and merge it.** `main` has no branch protection, but go through a PR anyway so CI runs on it.
+
+   ```bash
+   git switch -c chore/release-0.0.3
+   bun run version:set 0.0.3
+   git commit -am "Release 0.0.3"
+   git push -u origin chore/release-0.0.3
+   gh pr create --base main --fill
+   ```
+
+   Merge the PR once CI passes, then update your local `main`.
+
+3. **Tag the merge commit on `main` and push the tag.**
+
+   ```bash
+   git switch main && git pull
+   git tag -a v0.0.3 -m "mdgloss 0.0.3"
+   git push origin v0.0.3
+   ```
+
+4. **Watch the workflow.**
+
+   ```bash
+   gh run watch $(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId')
+   ```
+
+5. **Test the installers before publishing.** Download them from the draft (`gh release download v0.0.3 --dir /tmp/mdgloss-0.0.3`), install on Windows (and on a Mac if you have one), open a folder of notes, and check that the version in the file names is right.
+
+6. **Edit and publish the draft.** Add what changed, with links to the PRs (`gh release view v0.0.3 --web`). Leave **pre-release** ticked until 1.0.0. Publishing makes the release visible, and once the updater is in (week 7) it also sends the update to installed copies.
+
+7. **Note it in the build log** (`notes/linkedin-log.md`).
+
+## When something goes wrong
+
+**The check job fails ("Tag v0.0.3 but package.json says '0.0.2'").** Nothing was built or uploaded. Delete the tag, fix the version through a PR, and tag again:
+
+```bash
+git push origin :refs/tags/v0.0.3   # remote
+git tag -d v0.0.3                   # local
+```
+
+**You pushed a tag by mistake.** Cancel the run (`gh run cancel <id>`), delete the tag as above, and delete any draft release it made (`gh release delete v0.1.1 --yes`). A stray `v0.1.1` was pushed on 9 Oct; it's gone from GitHub, so delete your local copy if you still have it (`git tag -d v0.1.1`).
+
+**One platform fails to build.** The matrix uses `fail-fast: false`, so the other platform still uploads. Fix the problem on `main`, then either re-run the failed job (`gh run rerun <id> --failed`) if nothing in the code changed, or release the fix as the next patch version.
+
+**A published release is broken.** Don't move or reuse a tag that's been published: anyone who downloaded it has that version. Release a fixed patch version and mark the bad release as broken in its notes, or delete it if nobody depends on it yet.
+
+## Coming next
+
+### Auto-update (week 7, 16–22 Nov 2026)
+
+The Tauri updater checks GitHub Releases for a newer version. Its download count is the spec's measure of weekly users. Setup, once:
+
+1. Generate the updater key pair. This key is free and separate from OS code signing.
+
+   ```bash
+   bunx tauri signer generate -w ~/.tauri/mdgloss.key
+   ```
+
+   Keep `~/.tauri/mdgloss.key` and its password out of the repo, and back them up in a password manager. **If you lose the private key, installed copies can never be updated again** and users have to reinstall by hand.
+
+2. Add the private key and its password as repository secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, and pass them to `tauri-action` as `env` in `release.yml`.
+3. In `tauri.conf.json`, set `bundle.createUpdaterArtifacts: true` and add `plugins.updater` with the **public** key and the endpoint `https://github.com/Jaival/mdgloss/releases/latest/download/latest.json`.
+4. Add `tauri-plugin-updater` on the Rust side and `@tauri-apps/plugin-updater` on the frontend, with the `updater:default` permission in `capabilities/default.json`.
+
+`tauri-action` then uploads signed update bundles and a `latest.json` with every release.
+
+Things to know before relying on it:
+
+- `releases/latest` skips drafts **and pre-releases**. While releases are marked pre-release, the updater won't see them. Either publish alpha releases as normal releases, or point the endpoint at a `latest.json` you host somewhere else.
+- The updater compares versions as semver. It never offers a lower version, so don't go back down after a mistake.
+
+### Signing (March 2027)
+
+- **macOS:** Apple Developer Program (about $99 a year), a Developer ID Application certificate, and notarization. Enroll in February: approval can take a while.
+- **Windows:** a code signing certificate or a signing service. Compare prices before March.
+
+Both go into `release.yml` as secrets and `tauri-action` inputs. Until then the warnings described above stay.
