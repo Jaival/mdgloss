@@ -1,24 +1,40 @@
 import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import { useMemo, useState, type ComponentProps } from "react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
+import type { PlacedHighlight } from "../annotations/highlights";
+import { applyHighlights } from "./highlights";
 import { markdownToHast } from "./pipeline";
 
 interface MarkdownProps {
   source: string;
+  /** Highlights placed in `source`, rendered as <mark data-highlight="id">. */
+  highlights?: PlacedHighlight[];
   /** Turns an image src from the markdown into a URL the webview can load. */
   resolveImageSrc: (src: string) => string;
   /** Called for every link click; the default navigation is always prevented. */
   onLinkClick: (href: string) => void;
 }
 
+const NO_HIGHLIGHTS: PlacedHighlight[] = [];
+
 /**
  * Renders markdown as React elements (no innerHTML). Platform specifics such as
  * file URLs and opening links come in through props.
  */
-export function Markdown({ source, resolveImageSrc, onLinkClick }: MarkdownProps) {
+export function Markdown({
+  source,
+  highlights = NO_HIGHLIGHTS,
+  resolveImageSrc,
+  onLinkClick,
+}: MarkdownProps) {
   const tree = useMemo(() => markdownToHast(source), [source]);
+  // Kept apart so changing a highlight doesn't re-run the whole pipeline.
+  const marked = useMemo(
+    () => applyHighlights(tree, source, highlights),
+    [tree, source, highlights],
+  );
 
-  return toJsxRuntime(tree, {
+  return toJsxRuntime(marked, {
     Fragment,
     jsx,
     jsxs,

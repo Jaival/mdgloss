@@ -1,6 +1,6 @@
 # Architecture
 
-How mdgloss is put together, as of week 3 (October 2026). [SPEC.md](SPEC.md) says what the app should do and when. This file says how the code does it. Parts not built yet are marked _planned_.
+How mdgloss is put together, as of week 4 (October 2026). [SPEC.md](SPEC.md) says what the app should do and when. This file says how the code does it. Parts not built yet are marked _planned_.
 
 ## The rules everything follows
 
@@ -48,7 +48,7 @@ src/
   files/               Markdown file tree (loadMarkdownTree, FileTree)
   markdown/            Rendering pipeline, <Markdown>, links, Obsidian embeds
   selection/           Selection-to-source mapping (week 3)
-  annotations/         Sidecar paths (storage comes in week 4)
+  annotations/         Highlight model, file format, stores, toolbar (week 4)
   components/ui/       shadcn components, generated. Restyle through tokens, not edits
   index.css            Design tokens (see DESIGN.md)
 src-tauri/
@@ -68,6 +68,8 @@ interface FileSystem {
   readFile(path: string): Promise<string>;
   writeFile(path: string, content: string): Promise<void>;
   listDir(path: string): Promise<Entry[]>;
+  exists(path: string): Promise<boolean>;
+  createDir(path: string): Promise<void>; // with parents
   watch(path: string, onChange: (event: ChangeEvent) => void): Unsubscribe;
   canWrite(path: string): Promise<boolean>;
 }
@@ -87,8 +89,8 @@ The file tree ([`src/files/tree.ts`](../src/files/tree.ts)) lists `.md` and `.ma
 
 The webview can only reach files the user picked. That's enforced by Tauri, not by the frontend:
 
-- [`capabilities/default.json`](../src-tauri/capabilities/default.json) allows the open dialog and a short list of fs calls (read/write text, read dir, stat, watch). There's no general shell or process access.
-- The fs plugin's scope starts empty. Picking a file in the dialog grants that file. Picking a folder grants it **recursively** (`recursive: true`); without that, subfolders couldn't be listed.
+- [`capabilities/default.json`](../src-tauri/capabilities/default.json) allows the open dialog and a short list of fs calls (read/write text, read dir, stat, exists, mkdir, watch). There's no general shell or process access.
+- The fs plugin's scope starts empty, apart from `$APPDATA/annotations` (fallback annotation storage). Picking a file in the dialog grants that file. Picking a folder grants it **recursively** (`recursive: true`); without that, subfolders couldn't be listed.
 - Images are loaded through Tauri's asset protocol, which has its own scope, also empty at start. Opening a single file only grants that file, so a document's images wouldn't load. The Rust command `allow_document_images` fixes that:
   - it refuses documents the fs scope doesn't already allow
   - it grants only files with an image extension
@@ -108,6 +110,7 @@ markdown source
   → rehypeTextOffsets       data-text-start / data-text-end on every piece of text
   → rehype-slug             GitHub-style heading ids for #anchor links
   → rehype-highlight        syntax highlighting for fenced code with a language
+  → applyHighlights         <mark> around highlighted text (separate memo, see Annotations)
   → toJsxRuntime            HAST → React elements (in <Markdown>)
 ```
 
@@ -150,7 +153,7 @@ The quote is **source text**, so a selection across formatting includes the mark
 
 Offsets are UTF-16 code units, the same as the DOM and JavaScript strings.
 
-## Annotations _(week 4 onwards)_
+## Annotations
 
 Stored as JSON next to the markdown, never inside it:
 
@@ -161,10 +164,32 @@ os-course-notes/
     week1.md.json      ← sidecarPath("os-course-notes/week1.md")
 ```
 
-- A writable folder gets sidecar files. They travel with the folder through git, Dropbox or OneDrive.
-- Single files and read-only folders fall back to app storage (the app data directory on desktop, IndexedDB on the web), keyed by absolute path and a content hash. The UI shows when a file uses the fallback.
-- Every file has `schemaVersion: 1` from day one, so the format can change later. The full data model is in [SPEC.md](SPEC.md#data-model).
-- The app never deletes an annotation on its own. A highlight it can't place becomes `orphaned`, not lost.
+The full data model is in [SPEC.md](SPEC.md#data-model). Week 4 builds highlights; comments, bookmarks and `lastRead` follow.
+
+### Storage
+
+[`store.ts`](../src/annotations/store.ts) has one interface, `AnnotationStore` (`load`, `save`), and two implementations. The store is picked when something is opened:
+
+| Opened             | Store          | Where                                                                             |
+| ------------------ | -------------- | --------------------------------------------------------------------------------- |
+| A writable folder  | `SidecarStore` | `.mdgloss/<name>.json` next to each file. Travels with git, Dropbox, OneDrive     |
+| A single file      | `AppDataStore` | `$APPDATA/annotations/<sha256 of the absolute path>.json`, which records the path |
+| A read-only folder | `AppDataStore` | Same                                                                              |
+
+- The header shows a drive icon, with an explanation in its tooltip, when a file's annotations are in app storage.
+- **The `.mdgloss` grant.** A picked folder is granted as `folder/**`, but on macOS and Linux `**` doesn't match names starting with a dot. Before each sidecar access, the Rust command `allow_sidecar` grants the document's own `.mdgloss` folder. It refuses documents the fs scope doesn't already allow.
+- **Never lose annotations.** [`format.ts`](../src/annotations/format.ts) refuses a file with broken JSON or a newer `schemaVersion`; the hook then shows the error and doesn't save, so the file is never overwritten. A single highlight it can't read is left out of the UI but written back unchanged. Fields not managed yet (`bookmarks`, `lastRead`, unknown keys) are kept.
+- **Saves are queued** in [`useAnnotations`](../src/annotations/useAnnotations.ts), so they reach the disk in order. A failed save keeps the change on screen and shows the error in the header.
+- The content-hash part of the fallback key (from the spec) isn't built: the hash would let annotations follow a moved file, which nothing uses yet.
+
+### Highlights
+
+1. Selecting text in the reader and releasing the mouse maps the range with `toSourceSelection` and opens the floating toolbar ([`HighlightToolbar.tsx`](../src/annotations/HighlightToolbar.tsx)) above it. Picking a colour (click, or `1`–`4`) saves a highlight with the quote, 32 characters of prefix and suffix, and the start offset.
+2. Clicking a highlight opens the toolbar for it: change colour, or delete (`Del`). `Esc` closes it, and so does scrolling, because the toolbar is fixed to the window.
+3. `placeHighlights` places a highlight only if its quote is still at its offset. Anything else stays in the file, unshown, until re-anchoring (week 6).
+4. [`applyHighlights`](../src/markdown/highlights.ts) copies the rendered HAST and, for each element with `data-text-*`, aligns its text to the source with `alignText` (the same alignment selection mapping uses) and wraps highlighted characters in `<mark class="highlight highlight-<color>" data-highlight="<id>">`. A highlight across a bold word, list items, paragraphs, table cells or a code block becomes one mark per piece of text, so the HTML stays valid. Overlaps: the later highlight wins.
+
+The marks are part of the React tree, not DOM edits after rendering, so React never fights over them, and the `data-text-*` attributes stay on their elements, so selections inside highlighted text still map. The pipeline result is memoized on the source and `applyHighlights` separately on the highlights, so changing a colour doesn't re-parse the document.
 
 ### Re-anchoring _(weeks 6 and 11)_
 
@@ -185,16 +210,20 @@ In edit mode, CodeMirror maps highlight positions through each change, so no sea
 
 ## Testing
 
-| Area                           | Where                                    | How                                                                                      |
-| ------------------------------ | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Pipeline and offsets           | `src/markdown/pipeline.test.ts`          | Render to static markup or HAST and compare source slices                                |
-| Selection mapping              | `src/selection/sourceSelection.test.ts`  | happy-dom, real `Range` objects, 19 numbered fixtures and a 20,000-line performance test |
-| Paths, links, tree, fs adapter | `src/fs/`, `src/markdown/`, `src/files/` | Pure unit tests                                                                          |
-| Rust                           | `src-tauri/src/lib.rs`                   | Image filtering, and Obsidian resolution against a temporary vault                       |
+| Area                           | Where                                    | How                                                                                                    |
+| ------------------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Pipeline and offsets           | `src/markdown/pipeline.test.ts`          | Render to static markup or HAST and compare source slices                                              |
+| Selection mapping              | `src/selection/sourceSelection.test.ts`  | happy-dom, real `Range` objects, 19 numbered fixtures and a 20,000-line performance test               |
+| Highlight rendering            | `src/markdown/highlights.test.ts`        | Select in happy-dom, save, re-render with marks: formatting, paragraphs, lists, code, tables, entities |
+| Annotation format and stores   | `src/annotations/`                       | Round trips, unknown fields kept, refusals, in-memory `FileSystem` for both stores                     |
+| Paths, links, tree, fs adapter | `src/fs/`, `src/markdown/`, `src/files/` | Pure unit tests                                                                                        |
+| Rust                           | `src-tauri/src/lib.rs`                   | Image filtering, Obsidian resolution against a temporary vault, sidecar folder path                    |
 
 ## Known gaps and decisions
 
 - **No Content Security Policy.** `tauri.conf.json` has `"csp": null`. Rendering is already safe (raw HTML dropped, no `innerHTML`), but a CSP would be a second line of defence. Set one before the public release. It has to allow the asset protocol for images.
 - **Large documents re-render whole.** The pipeline runs on every source change. Fine for course notes; revisit if live reload (week 6) feels slow on big files.
-- **Not built yet:** `canWrite`-based fallback storage, the browser and demo adapters, file watching in the UI, edit mode, export.
+- **Highlights aren't reachable by keyboard yet.** They open by click. The sidebar list in week 5 gives keyboard access.
+- **Sidecar writes aren't atomic.** A crash mid-write could leave a broken file, which the app would then refuse to load (not overwrite). Write-then-rename needs the fs rename permission; add it if this ever happens.
+- **Not built yet:** the browser and demo adapters, file watching in the UI, edit mode, export.
 - **Linux** isn't a release target for version 1, though CI compiles and tests the Rust code on Linux.

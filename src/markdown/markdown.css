@@ -298,3 +298,37 @@
 .hljs-strong {
   font-weight: 600;
 }
+
+/* Annotation highlights (docs/DESIGN.md sections 3 and 6). One highlight can be
+   several <mark>s, one per piece of text it covers. */
+.markdown-body mark.highlight {
+  color: inherit;
+  border-radius: var(--radius-sm);
+  padding: 0 0.125rem;
+  margin: 0 -0.125rem;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  cursor: pointer;
+}
+
+.markdown-body mark.highlight-yellow {
+  background: var(--highlight-yellow);
+}
+
+.markdown-body mark.highlight-green {
+  background: var(--highlight-green);
+}
+
+.markdown-body mark.highlight-pink {
+  background: var(--highlight-pink);
+}
+
+.markdown-body mark.highlight-purple {
+  background: var(--highlight-purple);
+}
+
+/* The highlight the toolbar is editing. */
+.markdown-body mark.highlight[data-active] {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}

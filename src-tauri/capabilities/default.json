@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window. File access is limited to paths the user picks in a dialog.",
+  "description": "Capability for the main window. File access is limited to paths the user picks in a dialog, plus the app's own annotation folder.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -11,7 +11,13 @@
     "fs:allow-write-text-file",
     "fs:allow-read-dir",
     "fs:allow-stat",
+    "fs:allow-exists",
+    "fs:allow-mkdir",
     "fs:allow-watch",
-    "fs:allow-unwatch"
+    "fs:allow-unwatch",
+    {
+      "identifier": "fs:scope",
+      "allow": ["$APPDATA/annotations", "$APPDATA/annotations/**"]
+    }
   ]
 }

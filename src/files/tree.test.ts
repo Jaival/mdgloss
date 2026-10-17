@@ -20,6 +20,8 @@ function fakeFileSystem(files: string[]): FileSystem {
     },
     readFile: () => Promise.reject(new Error("not used")),
     writeFile: () => Promise.reject(new Error("not used")),
+    exists: () => Promise.reject(new Error("not used")),
+    createDir: () => Promise.reject(new Error("not used")),
     watch: () => () => {},
     canWrite: () => Promise.resolve(false),
   };

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { appDataDir } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
-import { FileText, FolderOpen, Monitor, Moon, Sun } from "lucide-react";
+import { FileText, FolderOpen, HardDrive, Monitor, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -37,23 +38,40 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { createHighlight, placeHighlights } from "./annotations/highlights";
+import { HighlightToolbar } from "./annotations/HighlightToolbar";
+import { AppDataStore, SidecarStore, type AnnotationStore } from "./annotations/store";
+import type { HighlightColor } from "./annotations/types";
+import { useAnnotations } from "./annotations/useAnnotations";
 import { FileTree } from "./files/FileTree";
 import { loadMarkdownTree, type TreeNode } from "./files/tree";
-import { baseName } from "./fs/path";
+import { baseName, joinPath } from "./fs/path";
 import { TauriFileSystem } from "./fs/tauri";
 import { classifyLink, resolveImage } from "./markdown/links";
 import { Markdown } from "./markdown/Markdown";
 import { imageSources } from "./markdown/pipeline";
+import { toSourceSelection, type SourceSelection } from "./selection/sourceSelection";
 import { isThemeSetting, useTheme } from "./theme";
 import "./markdown/markdown.css";
 
 const fs = new TauriFileSystem();
 
+/** Annotations next to the markdown, in a writable folder. */
+const sidecarStore = new SidecarStore(fs, (document) => invoke("allow_sidecar", { document }));
+/** Annotations in the app's data folder, for single files and read-only folders. */
+const appDataStore = new AppDataStore(fs, async () => joinPath(await appDataDir(), "annotations"));
+
 interface Workspace {
   /** Folder name, or the file name when a single file is open. */
   title: string;
   tree: TreeNode[];
+  store: AnnotationStore;
 }
+
+/** What the floating highlight toolbar is acting on. */
+type ToolbarTarget =
+  | { type: "selection"; selection: SourceSelection; anchor: DOMRect }
+  | { type: "highlight"; id: string; anchor: DOMRect };
 
 interface OpenDocument {
   path: string;
@@ -77,6 +95,21 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
   const readerRef = useRef<HTMLDivElement>(null);
+  const articleRef = useRef<HTMLElement>(null);
+  const [toolbar, setToolbar] = useState<ToolbarTarget | null>(null);
+  const annotations = useAnnotations(workspace?.store ?? null, doc?.path ?? null);
+  const { update } = annotations;
+
+  const activeId = toolbar?.type === "highlight" ? toolbar.id : null;
+  const placed = useMemo(
+    () =>
+      doc
+        ? placeHighlights(doc.content, annotations.highlights).map((h) =>
+            h.id === activeId ? { ...h, active: true } : h,
+          )
+        : [],
+    [doc, annotations.highlights, activeId],
+  );
 
   // Start each newly opened file at the top.
   useEffect(() => {
@@ -95,6 +128,7 @@ function App() {
   async function showFile(path: string) {
     const content = await fs.readFile(path);
     setDoc({ path, content, embeds: await allowImages(path, content) });
+    setToolbar(null);
   }
 
   /**
@@ -132,7 +166,11 @@ function App() {
         filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
       });
       if (path === null) return;
-      setWorkspace({ title: baseName(path), tree: [{ kind: "file", name: baseName(path), path }] });
+      setWorkspace({
+        title: baseName(path),
+        tree: [{ kind: "file", name: baseName(path), path }],
+        store: appDataStore,
+      });
       await showFile(path);
     });
 
@@ -141,7 +179,11 @@ function App() {
       // recursive: true grants access to subfolders, not just the picked folder itself.
       const path = await open({ multiple: false, directory: true, recursive: true });
       if (path === null) return;
-      setWorkspace({ title: baseName(path), tree: await loadMarkdownTree(fs, path) });
+      setWorkspace({
+        title: baseName(path),
+        tree: await loadMarkdownTree(fs, path),
+        store: (await fs.canWrite(path)) ? sidecarStore : appDataStore,
+      });
       setDoc(null);
     });
 
@@ -169,6 +211,64 @@ function App() {
         break;
     }
   }
+
+  /** Offers the toolbar for a new selection. A plain click is left to onReaderClick. */
+  function onReaderMouseUp() {
+    const article = articleRef.current;
+    const selection = window.getSelection();
+    if (!doc || !article || !annotations.editable || !selection || selection.rangeCount === 0)
+      return;
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return;
+    const mapped = toSourceSelection(range, article, doc.content);
+    setToolbar(
+      mapped
+        ? { type: "selection", selection: mapped, anchor: range.getBoundingClientRect() }
+        : null,
+    );
+  }
+
+  /** Opens the toolbar for a clicked highlight, or closes it on a click elsewhere. */
+  function onReaderClick(event: React.MouseEvent) {
+    if (!window.getSelection()?.isCollapsed) return;
+    const mark = (event.target as Element).closest("mark[data-highlight]");
+    const id = mark?.getAttribute("data-highlight");
+    setToolbar(
+      mark && id && annotations.editable
+        ? { type: "highlight", id, anchor: mark.getBoundingClientRect() }
+        : null,
+    );
+  }
+
+  const closeToolbar = useCallback(() => setToolbar(null), []);
+
+  const pickColor = useCallback(
+    (color: HighlightColor) => {
+      if (toolbar?.type === "selection") {
+        update((highlights) => [...highlights, createHighlight(toolbar.selection, color)]);
+        window.getSelection()?.removeAllRanges();
+      } else if (toolbar?.type === "highlight") {
+        const updated = new Date().toISOString();
+        update((highlights) =>
+          highlights.map((h) => (h.id === toolbar.id ? { ...h, color, updated } : h)),
+        );
+      }
+      setToolbar(null);
+    },
+    [toolbar, update],
+  );
+
+  const deleteHighlight = useCallback(() => {
+    if (toolbar?.type !== "highlight") return;
+    update((highlights) => highlights.filter((h) => h.id !== toolbar.id));
+    setToolbar(null);
+  }, [toolbar, update]);
+
+  const editedColor =
+    toolbar?.type === "highlight"
+      ? annotations.highlights.find((h) => h.id === toolbar.id)?.color
+      : undefined;
+  const headerError = error ?? annotations.error;
 
   const ThemeIcon = { system: Monitor, light: Sun, dark: Moon }[theme.setting];
 
@@ -235,9 +335,30 @@ function App() {
           <span className="min-w-0 truncate text-sm text-muted-foreground" title={doc?.path}>
             {doc ? doc.path : "mdgloss"}
           </span>
-          {error && (
-            <span className="min-w-0 truncate text-sm text-destructive" role="alert" title={error}>
-              {error}
+          {doc && workspace?.store.kind === "app" && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="flex shrink-0 items-center text-muted-foreground"
+                  tabIndex={0}
+                  aria-label="Annotations kept in app storage"
+                >
+                  <HardDrive className="size-4" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-64">
+                Annotations for this file are kept in the app&apos;s own storage, not next to the
+                file. Open its folder to keep them with your notes.
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {headerError && (
+            <span
+              className="min-w-0 truncate text-sm text-destructive"
+              role="alert"
+              title={headerError}
+            >
+              {headerError}
             </span>
           )}
           <DropdownMenu>
@@ -269,11 +390,22 @@ function App() {
           </DropdownMenu>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto" ref={readerRef}>
+        <div
+          className="min-h-0 flex-1 overflow-y-auto"
+          ref={readerRef}
+          // The toolbar is fixed in the window, so it would drift away from its text.
+          onScroll={toolbar ? closeToolbar : undefined}
+        >
           {doc ? (
-            <article className="markdown-body px-8 py-12">
+            <article
+              className="markdown-body px-8 py-12"
+              ref={articleRef}
+              onMouseUp={onReaderMouseUp}
+              onClick={onReaderClick}
+            >
               <Markdown
                 source={doc.content}
+                highlights={placed}
                 resolveImageSrc={(src) => imageSrc(doc, src)}
                 onLinkClick={(href) => followLink(doc.path, href)}
               />
@@ -299,6 +431,15 @@ function App() {
             </Empty>
           )}
         </div>
+        {doc && toolbar && (
+          <HighlightToolbar
+            anchor={toolbar.anchor}
+            color={editedColor}
+            onPick={pickColor}
+            onDelete={toolbar.type === "highlight" ? deleteHighlight : undefined}
+            onDismiss={closeToolbar}
+          />
+        )}
       </SidebarInset>
     </SidebarProvider>
   );

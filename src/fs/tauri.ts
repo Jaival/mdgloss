@@ -1,4 +1,6 @@
 import {
+  exists,
+  mkdir,
   readDir,
   readTextFile,
   stat,
@@ -37,6 +39,14 @@ export class TauriFileSystem implements FileSystem {
           kind: entry.isDirectory ? "directory" : "file",
         }))
     );
+  }
+
+  exists(path: string): Promise<boolean> {
+    return exists(path);
+  }
+
+  createDir(path: string): Promise<void> {
+    return mkdir(path, { recursive: true });
   }
 
   watch(path: string, onChange: (event: ChangeEvent) => void): Unsubscribe {

@@ -123,6 +123,25 @@ fn allow_document_images(
     Ok(resolved)
 }
 
+/// The hidden folder that holds a document's annotations (see src/annotations/sidecar.ts).
+fn sidecar_dir(document: &Path) -> Option<PathBuf> {
+    Some(document.parent()?.join(".mdgloss"))
+}
+
+/// Lets the frontend read and write the `.mdgloss` folder next to a document. A picked
+/// folder is granted as `folder/**`, but on macOS and Linux `**` skips names starting
+/// with a dot, so the sidecar folder needs its own grant. The document must already be
+/// allowed, and only its own sidecar folder is granted.
+#[tauri::command]
+fn allow_sidecar(app: AppHandle, document: PathBuf) -> Result<(), String> {
+    let scope = app.fs_scope();
+    if !scope.is_allowed(&document) {
+        return Err(format!("{} was not opened by the user", document.display()));
+    }
+    let dir = sidecar_dir(&document).ok_or("the document has no folder")?;
+    scope.allow_directory(&dir, true).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -130,7 +149,7 @@ pub fn run() {
         // Paths the user picks in a dialog are added to the fs scope for this session.
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![allow_document_images])
+        .invoke_handler(tauri::generate_handler![allow_document_images, allow_sidecar])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -138,6 +157,14 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sidecar_dir_sits_next_to_the_document() {
+        assert_eq!(
+            sidecar_dir(Path::new("/notes/os/week1.md")),
+            Some(PathBuf::from("/notes/os/.mdgloss"))
+        );
+    }
 
     #[test]
     fn accepts_image_extensions_in_any_case() {
