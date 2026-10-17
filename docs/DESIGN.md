@@ -208,7 +208,7 @@ Use shadcn components before writing custom ones. Add with the CLI; don't copy f
 
 **Command palette.** `Command` dialog on `Ctrl/Cmd+K` for open file, jump to heading, jump to bookmark.
 
-**Empty states.** Short sentence plus one action. Example: "No folder open." `[Open folder]`.
+**Empty states.** Short sentence plus one action, or two when the sentence offers a choice (primary first, the other `outline`). Example: "Nothing open." `[Open folder]` `[Open file]`.
 
 ### Form rules
 
