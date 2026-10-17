@@ -281,7 +281,7 @@ function App() {
           ) : (
             <Empty className="h-full">
               <EmptyHeader>
-                <EmptyTitle>{workspace ? "No file open." : "No folder open."}</EmptyTitle>
+                <EmptyTitle>{workspace ? "No file open." : "Nothing open."}</EmptyTitle>
                 <EmptyDescription>
                   {workspace
                     ? "Pick a file from the sidebar to start reading."
@@ -290,10 +290,16 @@ function App() {
               </EmptyHeader>
               {!workspace && (
                 <EmptyContent>
-                  <Button onClick={openFolder}>
-                    <FolderOpen data-icon="inline-start" />
-                    Open folder
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={openFolder}>
+                      <FolderOpen data-icon="inline-start" />
+                      Open folder
+                    </Button>
+                    <Button variant="outline" onClick={openFile}>
+                      <FileText data-icon="inline-start" />
+                      Open file
+                    </Button>
+                  </div>
                 </EmptyContent>
               )}
             </Empty>
