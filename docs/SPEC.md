@@ -1,6 +1,6 @@
 # mdgloss project spec
 
-Version 1.2 of this spec, 30 September 2026. The project name is mdgloss.
+Version 1.3 of this spec, 17 October 2026. The project name is mdgloss.
 
 ## What it is
 
@@ -73,7 +73,7 @@ Adapters: `TauriFileSystem` (desktop), `BrowserFileSystem` (File System Access A
 
 ### Annotation storage
 
-Hybrid. When a folder is opened and is writable, annotations go into a hidden sidecar folder:
+Hybrid. Annotations go into a hidden sidecar folder next to the markdown file, whether the file was opened on its own or through its folder, so both ways show the same annotations:
 
 ```
 os-course-notes/
@@ -83,7 +83,7 @@ os-course-notes/
     week1.md.json
 ```
 
-For single files or read-only locations, annotations go into the app's own storage (app data directory on desktop, IndexedDB on the web), keyed by absolute path plus a content hash. The UI shows a small indicator when a file uses this fallback.
+When the sidecar can't be written (a read-only location, or a browser without folder access), annotations go into the app's own storage (app data directory on desktop, IndexedDB on the web), keyed by absolute path plus a content hash. The UI shows a small indicator when a file uses this fallback. Annotations found in the app's storage for a file whose sidecar can be written are moved into the sidecar.
 
 ### Data model
 
@@ -170,7 +170,7 @@ Budget: 5 to 10 hours a week. The alpha date requires close to 9 hours a week th
 | 1    | 5 – 11 Oct     | Release pipeline and files | Pushing a `v*` tag builds unsigned Windows and macOS installers in GitHub Actions and attaches them to a draft pre-release (test with `v0.0.1`); `FileSystem` Tauri adapter; open file and open folder dialogs |
 | 2    | 12 – 18 Oct    | File tree and rendering    | File tree listing `.md` files; remark/rehype pipeline with GFM, code highlighting, relative images; source offsets on elements; readable layout, light and dark theme                                          |
 | 3    | 19 – 25 Oct    | Selection mapping          | Selection in preview converts to source offsets and a quote/prefix/suffix; unit tests on at least 10 fixture cases                                                                                             |
-| 4    | 26 Oct – 1 Nov | Highlights and storage     | Highlights render across element boundaries, colours, delete; sidecar read/write with `schemaVersion`; fallback storage for single files                                                                       |
+| 4    | 26 Oct – 1 Nov | Highlights and storage     | Highlights render across element boundaries, colours, delete; sidecar read/write with `schemaVersion`, also for single files; fallback storage when the sidecar can't be written                               |
 | 5    | 2 – 8 Nov      | Comments and sidebar       | Comment popover on highlights; sidebar lists the current file's highlights; click to scroll                                                                                                                    |
 | 6    | 9 – 15 Nov     | Live reload                | File watching, re-render on change, exact re-anchoring (steps 1 and 2); anything unmatched goes to a simple orphaned list; tests with edited fixtures                                                          |
 | 7    | 16 – 22 Nov    | Dogfood and updates        | Use it on real course material every day; fix what breaks; Tauri updater checks GitHub Releases, so every new tag reaches your installed alpha; remember last opened folder                                    |
