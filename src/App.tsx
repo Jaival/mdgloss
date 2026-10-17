@@ -40,7 +40,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createHighlight, placeHighlights } from "./annotations/highlights";
 import { HighlightToolbar } from "./annotations/HighlightToolbar";
-import { AppDataStore, SidecarStore, type AnnotationStore } from "./annotations/store";
+import { AppDataStore, LocalAnnotationStore, SidecarStore } from "./annotations/store";
 import type { HighlightColor } from "./annotations/types";
 import { useAnnotations } from "./annotations/useAnnotations";
 import { FileTree } from "./files/FileTree";
@@ -56,16 +56,16 @@ import "./markdown/markdown.css";
 
 const fs = new TauriFileSystem();
 
-/** Annotations next to the markdown, in a writable folder. */
-const sidecarStore = new SidecarStore(fs, (document) => invoke("allow_sidecar", { document }));
-/** Annotations in the app's data folder, for single files and read-only folders. */
-const appDataStore = new AppDataStore(fs, async () => joinPath(await appDataDir(), "annotations"));
+/** Annotations in each file's .mdgloss sidecar, or the app's data folder when that can't be written. */
+const annotationStore = new LocalAnnotationStore(
+  new SidecarStore(fs, (document) => invoke("allow_sidecar", { document })),
+  new AppDataStore(fs, async () => joinPath(await appDataDir(), "annotations")),
+);
 
 interface Workspace {
   /** Folder name, or the file name when a single file is open. */
   title: string;
   tree: TreeNode[];
-  store: AnnotationStore;
 }
 
 /** What the floating highlight toolbar is acting on. */
@@ -97,7 +97,7 @@ function App() {
   const readerRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLElement>(null);
   const [toolbar, setToolbar] = useState<ToolbarTarget | null>(null);
-  const annotations = useAnnotations(workspace?.store ?? null, doc?.path ?? null);
+  const annotations = useAnnotations(annotationStore, doc?.path ?? null);
   const { update } = annotations;
 
   const activeId = toolbar?.type === "highlight" ? toolbar.id : null;
@@ -169,7 +169,6 @@ function App() {
       setWorkspace({
         title: baseName(path),
         tree: [{ kind: "file", name: baseName(path), path }],
-        store: appDataStore,
       });
       await showFile(path);
     });
@@ -182,7 +181,6 @@ function App() {
       setWorkspace({
         title: baseName(path),
         tree: await loadMarkdownTree(fs, path),
-        store: (await fs.canWrite(path)) ? sidecarStore : appDataStore,
       });
       setDoc(null);
     });
@@ -335,7 +333,7 @@ function App() {
           <span className="min-w-0 truncate text-sm text-muted-foreground" title={doc?.path}>
             {doc ? doc.path : "mdgloss"}
           </span>
-          {doc && workspace?.store.kind === "app" && (
+          {doc && annotations.location === "app" && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <span
@@ -347,8 +345,8 @@ function App() {
                 </span>
               </TooltipTrigger>
               <TooltipContent className="max-w-64">
-                Annotations for this file are kept in the app&apos;s own storage, not next to the
-                file. Open its folder to keep them with your notes.
+                This file&apos;s folder can&apos;t be written, so its annotations are kept in the
+                app&apos;s own storage instead of a .mdgloss folder next to it.
               </TooltipContent>
             </Tooltip>
           )}

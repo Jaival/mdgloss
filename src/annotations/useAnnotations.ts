@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { AnnotationStore } from "./store";
+import type { AnnotationStore, StorageLocation } from "./store";
 import type { AnnotationFile, Highlight } from "./types";
 
 interface Loaded {
@@ -7,6 +7,8 @@ interface Loaded {
   /** null when the stored file couldn't be read; it is then never written. */
   file: AnnotationFile | null;
   error: string | null;
+  /** Where the last save went; null before the first save. */
+  location: StorageLocation | null;
 }
 
 export interface Annotations {
@@ -15,6 +17,8 @@ export interface Annotations {
   /** False until loaded, and when saving would overwrite a file that couldn't be read. */
   editable: boolean;
   error: string | null;
+  /** Where the last save went; null before the first save. */
+  location: StorageLocation | null;
   /** Applies a change to the highlights and saves the file. */
   update: (change: (highlights: Highlight[]) => Highlight[]) => void;
 }
@@ -38,8 +42,9 @@ export function useAnnotations(store: AnnotationStore | null, path: string | nul
       setLoaded(next);
     };
     store.load(path).then(
-      (file) => show({ path, file, error: null }),
-      (e: unknown) => show({ path, file: null, error: `Annotations not loaded: ${message(e)}` }),
+      (file) => show({ path, file, error: null, location: null }),
+      (e: unknown) =>
+        show({ path, file: null, error: `Annotations not loaded: ${message(e)}`, location: null }),
     );
     return () => {
       cancelled = true;
@@ -53,11 +58,16 @@ export function useAnnotations(store: AnnotationStore | null, path: string | nul
     const state = latest.current;
     if (!store || !state || state.path !== path || !state.file) return;
     const file = { ...state.file, highlights: change(state.file.highlights) };
-    const next = { path: state.path, file, error: null };
+    const next = { ...state, file, error: null };
     latest.current = next;
     setLoaded(next);
     saving.current = saving.current
       .then(() => store.save(state.path, file))
+      .then((location) => {
+        if (latest.current?.path !== state.path) return;
+        latest.current = { ...latest.current, location };
+        setLoaded(latest.current);
+      })
       .catch((e: unknown) => {
         // The change stays on screen; the error says it isn't on disk.
         if (latest.current?.path !== state.path) return;
@@ -70,6 +80,7 @@ export function useAnnotations(store: AnnotationStore | null, path: string | nul
     highlights: current?.file?.highlights ?? [],
     editable: Boolean(current?.file),
     error: current?.error ?? null,
+    location: current?.location ?? null,
     update,
   };
 }

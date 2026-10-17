@@ -168,15 +168,16 @@ The full data model is in [SPEC.md](SPEC.md#data-model). Week 4 builds highlight
 
 ### Storage
 
-[`store.ts`](../src/annotations/store.ts) has one interface, `AnnotationStore` (`load`, `save`), and two implementations. The store is picked when something is opened:
+[`store.ts`](../src/annotations/store.ts) has one interface, `AnnotationStore` (`load`, `save`). The app uses `LocalAnnotationStore`, which combines two others:
 
-| Opened             | Store          | Where                                                                             |
-| ------------------ | -------------- | --------------------------------------------------------------------------------- |
-| A writable folder  | `SidecarStore` | `.mdgloss/<name>.json` next to each file. Travels with git, Dropbox, OneDrive     |
-| A single file      | `AppDataStore` | `$APPDATA/annotations/<sha256 of the absolute path>.json`, which records the path |
-| A read-only folder | `AppDataStore` | Same                                                                              |
+| Store          | Where                                                                             | Used                                       |
+| -------------- | --------------------------------------------------------------------------------- | ------------------------------------------ |
+| `SidecarStore` | `.mdgloss/<name>.json` next to the file. Travels with git, Dropbox, OneDrive      | Always first, for single files and folders |
+| `AppDataStore` | `$APPDATA/annotations/<sha256 of the absolute path>.json`, which records the path | When writing the sidecar fails             |
 
-- The header shows a drive icon, with an explanation in its tooltip, when a file's annotations are in app storage.
+- **One home per file.** A file opened on its own and the same file opened through its folder use the same sidecar, so both show the same highlights. (The first build put single files in app storage, so the two ways of opening showed different highlights.)
+- **Moving out of app storage.** On load, highlights found in app storage are shown alongside the sidecar's (deduplicated by id). The next successful sidecar save writes them all to the sidecar and empties the app-storage file (`"movedTo": "sidecar"`), so a highlight deleted later can't come back from there. Emptying instead of deleting avoids giving the webview an fs remove permission.
+- `save` resolves to where the annotations went. The header shows a drive icon, with an explanation in its tooltip, when the last save fell back to app storage.
 - **The `.mdgloss` grant.** A picked folder is granted as `folder/**`, but on macOS and Linux `**` doesn't match names starting with a dot. Before each sidecar access, the Rust command `allow_sidecar` grants the document's own `.mdgloss` folder. It refuses documents the fs scope doesn't already allow.
 - **Never lose annotations.** [`format.ts`](../src/annotations/format.ts) refuses a file with broken JSON or a newer `schemaVersion`; the hook then shows the error and doesn't save, so the file is never overwritten. A single highlight it can't read is left out of the UI but written back unchanged. Fields not managed yet (`bookmarks`, `lastRead`, unknown keys) are kept.
 - **Saves are queued** in [`useAnnotations`](../src/annotations/useAnnotations.ts), so they reach the disk in order. A failed save keeps the change on screen and shows the error in the header.

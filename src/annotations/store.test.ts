@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { FileSystem } from "../fs/types";
 import { emptyAnnotations } from "./format";
 import { createHighlight } from "./highlights";
-import { AppDataStore, SidecarStore } from "./store";
+import { AppDataStore, LocalAnnotationStore, SidecarStore } from "./store";
 
 /** In-memory FileSystem that records folders and files. */
 function memoryFileSystem() {
@@ -103,5 +103,100 @@ describe("AppDataStore", () => {
     expect(JSON.parse([...files.values()][0]).path).toBe("/a/week1.md");
     expect(await store.load("/a/week1.md")).toMatchObject(file);
     expect(await store.load("/b/week1.md")).toEqual(emptyAnnotations("week1.md"));
+  });
+});
+
+describe("LocalAnnotationStore", () => {
+  const dir = async () => "/appdata/annotations";
+
+  function stores(fs: FileSystem) {
+    const sidecar = new SidecarStore(fs);
+    const app = new AppDataStore(fs, dir);
+    return { sidecar, app, local: new LocalAnnotationStore(sidecar, app) };
+  }
+
+  it("saves to the sidecar, whether a file or its folder was opened", async () => {
+    const { fs, files } = memoryFileSystem();
+    const { local } = stores(fs);
+    const file = {
+      ...emptyAnnotations("a.md"),
+      highlights: [createHighlight(selection, "yellow")],
+    };
+
+    expect(await local.save("/notes/a.md", file)).toBe("sidecar");
+    expect([...files.keys()]).toEqual(["/notes/.mdgloss/a.md.json"]);
+  });
+
+  it("merges highlights from app storage and moves them on the next save", async () => {
+    const { fs } = memoryFileSystem();
+    const { sidecar, app, local } = stores(fs);
+    const inSidecar = createHighlight(selection, "yellow");
+    const inApp = createHighlight(selection, "pink");
+    await sidecar.save("/notes/a.md", { ...emptyAnnotations("a.md"), highlights: [inSidecar] });
+    await app.save("/notes/a.md", { ...emptyAnnotations("a.md"), highlights: [inApp] });
+
+    const loaded = await local.load("/notes/a.md");
+    expect(loaded.highlights.map((h) => h.id)).toEqual([inSidecar.id, inApp.id]);
+
+    // Deleting the moved highlight must stick: app storage no longer has it.
+    await local.save("/notes/a.md", { ...loaded, highlights: [inSidecar] });
+    expect((await app.load("/notes/a.md")).highlights).toEqual([]);
+    expect((await local.load("/notes/a.md")).highlights.map((h) => h.id)).toEqual([inSidecar.id]);
+  });
+
+  it("doesn't duplicate a highlight that is in both places", async () => {
+    const { fs } = memoryFileSystem();
+    const { sidecar, app, local } = stores(fs);
+    const both = { ...emptyAnnotations("a.md"), highlights: [createHighlight(selection, "green")] };
+    await sidecar.save("/notes/a.md", both);
+    await app.save("/notes/a.md", both);
+    expect((await local.load("/notes/a.md")).highlights).toHaveLength(1);
+  });
+
+  it("falls back to app storage when the sidecar can't be written", async () => {
+    const { fs, files } = memoryFileSystem();
+    const readOnly: FileSystem = {
+      ...fs,
+      createDir: async (path) => {
+        if (path.includes(".mdgloss")) throw new Error("Access is denied");
+        return fs.createDir(path);
+      },
+    };
+    const { local } = stores(readOnly);
+    const file = {
+      ...emptyAnnotations("a.md"),
+      highlights: [createHighlight(selection, "yellow")],
+    };
+
+    expect(await local.save("/locked/a.md", file)).toBe("app");
+    expect([...files.keys()][0]).toMatch(/^\/appdata\/annotations\//);
+    expect((await local.load("/locked/a.md")).highlights).toEqual(file.highlights);
+  });
+
+  it("refuses to load when the sidecar is broken", async () => {
+    const { fs, files } = memoryFileSystem();
+    files.set("/notes/.mdgloss/a.md.json", "{ broken");
+    await expect(stores(fs).local.load("/notes/a.md")).rejects.toThrow(/not valid JSON/);
+  });
+
+  it("still loads the sidecar when the app-storage copy is broken", async () => {
+    const { fs, files } = memoryFileSystem();
+    const { sidecar, app, local } = stores(fs);
+    const file = {
+      ...emptyAnnotations("a.md"),
+      highlights: [createHighlight(selection, "yellow")],
+    };
+    await sidecar.save("/notes/a.md", file);
+    await app.save("/notes/a.md", file);
+    const appFile = [...files.keys()].find((path) => path.startsWith("/appdata"))!;
+    files.set(appFile, "{ broken");
+
+    const error = console.error;
+    console.error = () => {};
+    try {
+      expect((await local.load("/notes/a.md")).highlights).toEqual(file.highlights);
+    } finally {
+      console.error = error;
+    }
   });
 });
