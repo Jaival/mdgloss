@@ -1,6 +1,6 @@
 [package]
 name = "mdgloss"
-version = "0.0.3"
+version = "0.0.4"
 description = "A reader-first markdown app: highlight, comment and bookmark without touching your files"
 authors = ["Jaival Saija"]
 license = "MIT"
