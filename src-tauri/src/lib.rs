@@ -149,7 +149,10 @@ pub fn run() {
         // Paths the user picks in a dialog are added to the fs scope for this session.
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![allow_document_images, allow_sidecar])
+        .invoke_handler(tauri::generate_handler![
+            allow_document_images,
+            allow_sidecar
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

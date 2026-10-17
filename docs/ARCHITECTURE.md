@@ -19,7 +19,7 @@ How mdgloss is put together, as of week 4 (October 2026). [SPEC.md](SPEC.md) say
 │    ├─ files/      tree of .md files          ◄── fs/ FileSystem interface    │
 │    ├─ markdown/   source → HAST → React       (TauriFileSystem today;        │
 │    ├─ selection/  DOM Range → source offsets   Browser/Demo planned)         │
-│    └─ annotations/ sidecar paths (storage planned)                           │
+│    └─ annotations/ highlights, sidecar + fallback store                      │
 │                                                                              │
 └──────────────┬───────────────────────────────────────────────┬───────────────┘
                │ Tauri plugins (fs, dialog, opener)            │ invoke()
