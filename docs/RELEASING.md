@@ -21,7 +21,7 @@ A tag run can restore Rust caches saved on `main`, but not caches saved by anoth
 | Windows  | `mdgloss_<version>_x64-setup.exe` (NSIS), `mdgloss_<version>_x64_en-US.msi`                 |
 | macOS    | `mdgloss_<version>_universal.dmg` (Apple Silicon and Intel), `mdgloss_universal.app.tar.gz` |
 
-The builds are **unsigned** until February 2027 (see [Signing](#signing-february-2027)). Windows SmartScreen and macOS Gatekeeper warn before opening them, and the release notes say how to get past the warning.
+The builds are **unsigned** until March 2027 (see [Signing](#signing-march-2027)). Windows SmartScreen and macOS Gatekeeper warn before opening them, and the release notes say how to get past the warning.
 
 Installer file names come from the version in `tauri.conf.json`, **not** from the tag. That's why the versions have to match: the v0.0.2 release went out with `mdgloss_0.1.0_*` files before the check existed.
 
@@ -152,7 +152,7 @@ Things to know before relying on it:
 - `releases/latest` skips drafts **and pre-releases**. That's why releases are published as normal releases from v0.0.3 on (v0.0.1 and v0.0.2 stay marked pre-release). Don't tick pre-release on a release the updater should offer.
 - The updater compares versions as semver. It never offers a lower version, so don't go back down after a mistake.
 
-### Signing (February 2027)
+### Signing (March 2027)
 
 - **macOS:** Apple Developer Program (about $99 a year), a Developer ID Application certificate, and notarization. Enrol in late January (week 17): approval can take a while.
 - **Windows:** a code signing certificate or a signing service. Apply to the SignPath Foundation (free for open-source projects) in week 17, with a paid certificate as the fallback.
