@@ -78,7 +78,7 @@ interface FileSystem {
 | Adapter             | Status        | Backed by                                                                                                                    |
 | ------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `TauriFileSystem`   | Done          | `@tauri-apps/plugin-fs`. Skips symlinks so a link to a parent folder can't loop the tree. `watch` debounces bursts by 300 ms |
-| `BrowserFileSystem` | Planned (Feb) | File System Access API (Chrome, Edge)                                                                                        |
+| `BrowserFileSystem` | Planned (Mar) | File System Access API (Chrome, Edge)                                                                                        |
 | `DemoFileSystem`    | Planned (Jan) | In-memory sample documents for the web demo                                                                                  |
 
 Paths are absolute strings. [`src/fs/path.ts`](../src/fs/path.ts) handles both `/` and `\`, so the same helpers work on Windows.

@@ -107,12 +107,12 @@ GITHUB_REF_NAME=v0.0.2 bash -c "$(sed -n '/- run: |/,/done/p' .github/workflows/
 
 ## Secrets
 
-| Secret                                      | Used by          | Status        |
-| ------------------------------------------- | ---------------- | ------------- |
-| `GITHUB_TOKEN`                              | release workflow | Built in      |
-| `TAURI_SIGNING_PRIVATE_KEY` and `_PASSWORD` | updater signing  | Week 7        |
-| Apple certificate, notarization credentials | macOS signing    | February 2027 |
-| Windows signing credentials                 | Windows signing  | February 2027 |
+| Secret                                      | Used by          | Status     |
+| ------------------------------------------- | ---------------- | ---------- |
+| `GITHUB_TOKEN`                              | release workflow | Built in   |
+| `TAURI_SIGNING_PRIVATE_KEY` and `_PASSWORD` | updater signing  | Week 7     |
+| Apple certificate, notarization credentials | macOS signing    | March 2027 |
+| Windows signing credentials                 | Windows signing  | March 2027 |
 
 The repository has no secrets yet. Add them under **Settings → Secrets and variables → Actions**, or with `gh secret set NAME < file`. Never commit keys. Keep a backup of each in a password manager.
 

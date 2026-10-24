@@ -155,10 +155,10 @@ In edit mode, highlights are re-anchored when the file is saved. Mapping highlig
 ## Platforms and distribution
 
 - Windows and macOS builds from GitHub Actions on every tagged release.
-- macOS: Developer ID signing and notarization (Apple Developer Program, about $99 a year). Enrol in week 17 (late January), so approval is done before signing is built in February.
+- macOS: Developer ID signing and notarization (Apple Developer Program, about $99 a year). Enrol in week 17 (late January), so approval is done before signing is built in March.
 - Windows: code signing certificate or a signing service. Choose by week 17: apply to the SignPath Foundation (free for open-source projects, but approval takes time) and compare paid options as the fallback. SmartScreen builds reputation from downloads whatever the certificate, so earlier signed builds help.
 - Auto-update through the Tauri updater, with the manifest hosted on GitHub Releases. It checks at most once a day. The manifest's download count, summed across releases, is the weekly-usage proxy (see [Success criteria](#success-criteria)).
-- Unsigned release builds from week 1: every `v*` tag produces Windows and macOS installers on a draft release. The auto-updater follows in week 7. Only OS code signing waits until February, because it costs money and the only users before then are me and a few beta testers.
+- Unsigned release builds from week 1: every `v*` tag produces Windows and macOS installers on a draft release. The auto-updater follows in week 7. Only OS code signing waits until March, because it costs money and the only users before then are me and a few beta testers.
 - Every release is checked by hand on both Windows and macOS before it is published. Development happens on Windows, and some bugs only show on macOS (the `.mdgloss` folder grant in week 4 was one).
 - The Tauri updater signs update files with its own free key pair (`tauri signer generate`), separate from OS code signing, so auto-updates work before the app is signed.
 
@@ -198,26 +198,21 @@ Moved out of the alpha to make November possible: bookmarks, last-read position,
 | 16    | 18 – 24 Jan     | Edit mode (could have)           | CodeMirror source editor behind a button and Ctrl/Cmd+E, save to disk, highlights re-anchored on save. If the week runs short: an "Open in editor" button instead, edit mode after launch | Not started |
 | 17    | 25 – 31 Jan     | Gate check and signing prep      | See "The January gate" below; Apple Developer enrolment started; Windows signing route chosen and applied for                                                                             | Not started |
 
-### Phase 3: signing and web demo (February 2027)
+### Phase 3: exams (February 2027)
 
-No exams are scheduled for February. If any are set later, the buffer in weeks 24 and 25 absorbs them.
+Weeks 18 to 21, 1 to 28 February. Adjust these dates to the real exam period once it's known. Two to three hours a week at most: write tests for the re-anchoring code, start the README, collect screenshots. No new features.
 
-| Week  | Dates       | Goal     | Done when                                                                                                   | Status      |
-| ----- | ----------- | -------- | ----------------------------------------------------------------------------------------------------------- | ----------- |
-| 18–19 | 1 – 14 Feb  | Signing  | Apple Developer ID signing and notarization and Windows code signing in the existing release workflow       | Not started |
-| 20–21 | 15 – 28 Feb | Web demo | `BrowserFileSystem` adapter, single-file fallback for Safari and Firefox, the demo deployed to GitHub Pages | Not started |
-
-From 1 February, 3 to 5 classmates use the app for their own course reading, on unsigned builds until signing lands. Everything they run into goes on one list.
+The classmate beta runs during these weeks: 3 to 5 classmates use the app for their own exam reading, on unsigned builds. Everything they run into goes on one list. It costs little time, and it is the first use by someone other than me.
 
 ### Phase 4: ship (1 March – 18 April 2027)
 
-| Week  | Dates          | Goal                            | Done when                                                                                                                                                                                         | Status      |
-| ----- | -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 22–23 | 1 – 14 Mar     | Beta fixes and launch readiness | Fix what the classmate beta found; Content Security Policy set; branch protection on `main`; README says how update checks are counted; the weekly-users formula checked against the beta numbers | Not started |
-| 24–25 | 15 – 28 Mar    | Buffer                          | Kept free for anything that slipped. If nothing did, work through the alpha's list of the 10 most annoying problems                                                                               | Not started |
-| 26    | 29 Mar – 4 Apr | Launch material                 | README with a demo GIF, short landing page, wider private beta with 5 to 10 people (classmates and developer friends)                                                                             | Not started |
-| 27    | 5 – 11 Apr     | Release candidate               | Fix beta feedback, write the Show HN post, tag `v1.0.0`                                                                                                                                           | Not started |
-| 28    | 12 – 18 Apr    | Launch                          | Post on Tuesday 13 April: Show HN, then Reddit and LinkedIn. Spend the week answering comments and fixing urgent bugs                                                                             | Not started |
+| Week  | Dates          | Goal                          | Done when                                                                                                                                                                                                                                                                                                                                        | Status      |
+| ----- | -------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| 22–23 | 1 – 14 Mar     | Signing                       | Apple Developer ID signing and notarization and Windows code signing in the existing release workflow                                                                                                                                                                                                                                            | Not started |
+| 24–25 | 15 – 28 Mar    | Web demo and launch readiness | `BrowserFileSystem` adapter, single-file fallback for Safari and Firefox, the demo deployed to GitHub Pages (`DemoFileSystem` is done in week 15); fix what the classmate beta found; Content Security Policy set; branch protection on `main`; README says how update checks are counted; weekly-users formula checked against the beta numbers | Not started |
+| 26    | 29 Mar – 4 Apr | Launch material               | README with a demo GIF, short landing page, wider private beta with 5 to 10 people (classmates and developer friends)                                                                                                                                                                                                                            | Not started |
+| 27    | 5 – 11 Apr     | Release candidate             | Fix beta feedback, write the Show HN post, tag `v1.0.0`                                                                                                                                                                                                                                                                                          | Not started |
+| 28    | 12 – 18 Apr    | Launch                        | Post on Tuesday 13 April: Show HN, then Reddit and LinkedIn. Spend the week answering comments and fixing urgent bugs                                                                                                                                                                                                                            | Not started |
 
 ## Success criteria
 
@@ -241,7 +236,7 @@ A smaller check comes first, on Sunday 13 December (end of week 10): did I use t
 | Selection-to-source mapping is harder than planned                            | Retired: week 3 finished on time with 19 fixture cases                                                                                                                                          |
 | A semester week eats all the hours                                            | Weekly goals are small and planned at about 75% of the hours. Move one week, never skip the gate                                                                                                |
 | Editing grows into a second product                                           | Edit mode is a one-week could-have: a source editor that re-anchors on save. If it runs over, ship "Open in editor" and move edit mode after launch. Live preview is out of scope for version 1 |
-| Signing costs or Apple notarization take longer than expected                 | Apple enrolment and the Windows signing application start in week 17, two weeks before signing is built                                                                                         |
+| Signing costs or Apple notarization take longer than expected                 | Apple enrolment and the Windows signing application start in week 17, a month before signing is built                                                                                           |
 | Browser folder access only works in Chrome and Edge                           | Accepted. The web version is a demo; the desktop app is the product                                                                                                                             |
 | A sidecar changed elsewhere (sync, `git pull`, another window) is overwritten | Re-read and merge before each save, atomic writes (week 4); reload when the sidecar changes on disk (week 6)                                                                                    |
 | Bugs that only show on macOS, while development happens on Windows            | Run the release checklist on a Mac for every release from week 5; WebKit browser tests in CI from week 15                                                                                       |
