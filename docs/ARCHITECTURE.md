@@ -29,13 +29,13 @@ How mdgloss is put together, as of week 4 (October 2026). [SPEC.md](SPEC.md) say
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Layer         | Technology                                                                           |
-| ------------- | ------------------------------------------------------------------------------------ |
-| Desktop shell | Tauri 2 with the fs, dialog and opener plugins                                       |
-| UI            | React 19, TypeScript, Vite, Tailwind v4, shadcn/ui components (`src/components/ui/`) |
-| Markdown      | unified: remark-parse, remark-gfm, remark-rehype, rehype-slug, rehype-highlight      |
-| Tests         | Vitest (happy-dom for DOM tests), `cargo test`                                       |
-| Planned       | CodeMirror 6 (edit mode), diff-match-patch (fuzzy re-anchoring)                      |
+| Layer         | Technology                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| Desktop shell | Tauri 2 with the fs, dialog and opener plugins                                              |
+| UI            | React 19, TypeScript, Vite, Tailwind v4, shadcn/ui components (`src/components/ui/`)        |
+| Markdown      | unified: remark-parse, remark-gfm, remark-rehype, rehype-slug, rehype-highlight             |
+| Tests         | Vitest (happy-dom for DOM tests), `cargo test`                                              |
+| Planned       | CodeMirror 6 (edit mode), diff-match-patch (fuzzy re-anchoring), Playwright (browser tests) |
 
 ## Source layout
 
@@ -78,8 +78,8 @@ interface FileSystem {
 | Adapter             | Status        | Backed by                                                                                                                    |
 | ------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `TauriFileSystem`   | Done          | `@tauri-apps/plugin-fs`. Skips symlinks so a link to a parent folder can't loop the tree. `watch` debounces bursts by 300 ms |
-| `BrowserFileSystem` | Planned (Mar) | File System Access API (Chrome, Edge)                                                                                        |
-| `DemoFileSystem`    | Planned (Mar) | In-memory sample documents for the web demo                                                                                  |
+| `BrowserFileSystem` | Planned (Feb) | File System Access API (Chrome, Edge)                                                                                        |
+| `DemoFileSystem`    | Planned (Jan) | In-memory sample documents for the web demo                                                                                  |
 
 Paths are absolute strings. [`src/fs/path.ts`](../src/fs/path.ts) handles both `/` and `\`, so the same helpers work on Windows.
 
@@ -201,7 +201,7 @@ Runs when a file opens and whenever it changes:
 3. _(Week 11)_ Fuzzy match with diff-match-patch. Above the threshold (about 0.8 to start), the highlight is placed with status `approximate` until the user confirms it.
 4. Otherwise `orphaned`, listed at the bottom of the sidebar for re-attaching or deleting.
 
-In edit mode, CodeMirror maps highlight positions through each change, so no search is needed until save.
+In edit mode (planned, could-have), highlights are re-anchored when the file is saved.
 
 ## UI and design
 

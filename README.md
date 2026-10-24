@@ -20,7 +20,7 @@ Markdown apps are built for writing. Reading someone else's docs, course notes o
 - Highlights in several colours, with comments
 - Bookmarks for a file, a heading or a spot in the text, plus automatic last-read position
 - Live reload when a file changes on disk; highlights re-anchor to the moved text
-- A source editor (CodeMirror) behind a toggle; files open in reading mode
+- A source editor (CodeMirror) behind a toggle, if it fits before launch; files open in reading mode
 - Export all annotations as a markdown summary
 - Desktop apps for Windows and macOS, plus a web demo
 
