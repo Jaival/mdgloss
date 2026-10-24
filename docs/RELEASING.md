@@ -21,7 +21,7 @@ A tag run can restore Rust caches saved on `main`, but not caches saved by anoth
 | Windows  | `mdgloss_<version>_x64-setup.exe` (NSIS), `mdgloss_<version>_x64_en-US.msi`                 |
 | macOS    | `mdgloss_<version>_universal.dmg` (Apple Silicon and Intel), `mdgloss_universal.app.tar.gz` |
 
-The builds are **unsigned** until March 2027 (see [Signing](#signing-march-2027)). Windows SmartScreen and macOS Gatekeeper warn before opening them, and the release notes say how to get past the warning.
+The builds are **unsigned** until February 2027 (see [Signing](#signing-february-2027)). Windows SmartScreen and macOS Gatekeeper warn before opening them, and the release notes say how to get past the warning.
 
 Installer file names come from the version in `tauri.conf.json`, **not** from the tag. That's why the versions have to match: the v0.0.2 release went out with `mdgloss_0.1.0_*` files before the check existed.
 
@@ -62,16 +62,15 @@ The `.msi` build is stricter than semver:
 - Major and minor go up to **255**, patch up to **65,535**.
 - A pre-release part must be **numbers only**. `0.1.0-1` works. `0.1.0-alpha` fails the Windows build.
 
-The spec plans to tag the alpha as `v0.1.0-alpha`, which would fail the Windows build. Pick one:
+That's why the spec tags the alpha `v0.1.0` and calls it the alpha in the release title and notes. Nothing is public yet, so the version number doesn't have to say "alpha".
 
-1. **Recommended:** tag it `v0.1.0`. Call it the alpha in the release title and notes. Nothing is public yet, so the version number doesn't have to say "alpha".
-2. Keep `0.1.0-alpha` and add an MSI-only version to `tauri.conf.json`:
+If a version ever needs a text pre-release part, add an MSI-only version to `tauri.conf.json`:
 
-   ```json
-   "bundle": { "windows": { "wix": { "version": "0.1.0" } } }
-   ```
+```json
+"bundle": { "windows": { "wix": { "version": "0.1.0" } } }
+```
 
-   This field has to be updated by hand for every pre-release, and `version:set` refuses non-numeric pre-releases, so you'd edit the files yourself.
+This field has to be updated by hand for every pre-release, and `version:set` refuses non-numeric pre-releases, so you'd edit the files yourself.
 
 ## Cutting a release, step by step
 
@@ -153,9 +152,9 @@ Things to know before relying on it:
 - `releases/latest` skips drafts **and pre-releases**. That's why releases are published as normal releases from v0.0.3 on (v0.0.1 and v0.0.2 stay marked pre-release). Don't tick pre-release on a release the updater should offer.
 - The updater compares versions as semver. It never offers a lower version, so don't go back down after a mistake.
 
-### Signing (March 2027)
+### Signing (February 2027)
 
-- **macOS:** Apple Developer Program (about $99 a year), a Developer ID Application certificate, and notarization. Enroll in February: approval can take a while.
-- **Windows:** a code signing certificate or a signing service. Compare prices before March.
+- **macOS:** Apple Developer Program (about $99 a year), a Developer ID Application certificate, and notarization. Enrol in late January (week 17): approval can take a while.
+- **Windows:** a code signing certificate or a signing service. Apply to the SignPath Foundation (free for open-source projects) in week 17, with a paid certificate as the fallback.
 
 Both go into `release.yml` as secrets and `tauri-action` inputs. Until then the warnings described above stay.
