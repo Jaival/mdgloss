@@ -61,6 +61,7 @@ More docs:
 - [Architecture](docs/ARCHITECTURE.md): how the code is put together, from file access to selection mapping
 - [DevOps](docs/DEVOPS.md): local setup, CI, branches, dependency updates
 - [Releasing](docs/RELEASING.md): how to cut a release and change the version (`bun run version:set`)
+- [Dogfooding log](docs/DOGFOODING.md): daily use, problems found, days per week
 
 ## License
 

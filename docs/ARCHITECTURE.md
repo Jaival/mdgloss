@@ -56,7 +56,7 @@ src-tauri/
   capabilities/        What the webview may call
   tauri.conf.json      App config, version, bundling
 scripts/               Repo scripts (set-version.mjs)
-docs/                  SPEC, DESIGN, ARCHITECTURE, DEVOPS, RELEASING
+docs/                  SPEC, DESIGN, ARCHITECTURE, DEVOPS, RELEASING, DOGFOODING
 ```
 
 ## File access
