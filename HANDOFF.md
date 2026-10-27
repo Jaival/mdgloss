@@ -9,20 +9,21 @@ Sprint 2026-10-26 (spec week 4, hardening): make highlights safe to use every da
   - `AnnotationStore.save(path, annotations, base)` now takes the file the edit started from and resolves to `{ location, file }`. `useAnnotations` shows the merged file unless a newer edit is waiting to save.
   - `SidecarStore` writes `<name>.json.tmp` and renames it over the sidecar. Added `rename` to `FileSystem` and `fs:allow-rename` to the capability.
   - Covered by `merge.test.ts` and `store.test.ts`. Format, lint, typecheck, tests, build, cargo fmt/clippy/test all pass locally.
-- **Release checklist for both platforms** (branch `chore/release-checklist` off `main`, not pushed yet).
+- **Release checklist for both platforms** ([#37](https://github.com/Jaival/mdgloss/pull/37), merged 27 Oct).
   - [Release checklist](docs/RELEASING.md#release-checklist) in `docs/RELEASING.md`: setup, install (both, Windows only, macOS only), opening files, rendering, selections and highlights, annotations (restart, no `.tmp` left, two windows, fallback storage). Step 5 of "Cutting a release" now points to it.
   - [`docs/release-check/`](docs/release-check/) is the fixed test folder: formatting, escapes, entities, list, table, code, footnote, the four link kinds, a relative image, an `![[…]]` embed, a missing image, and a subfolder for the recursive grant and the `.mdgloss` grant.
   - The six expected quotes were checked by running `toSourceSelection` on the fixture in a throwaway Vitest file. The checklist itself hasn't been run against an installer yet; the first run is the next release.
+- **Dependabot #20 (Cargo) and #33 (Bun) merged** (27 Oct). Both were merged together onto `main` locally first and every `ci.yml` step passed. #2 (TypeScript 7) is still open and out of scope.
+- **Dogfooding log** in [`docs/DOGFOODING.md`](docs/DOGFOODING.md): sessions, problems with severity and count, missed days, weekly totals. Linked from the README. The first row (27 Oct, Windows, the checklist's **Annotations** section) is there to fill in; daily use hasn't started until that session is done.
 
 ## Next (sprint order)
 
-1. P0 Trademark (EUIPO/TMview) and domain check for "mdgloss". 0.5h. Needs the user; the agent can only prepare the searches.
-2. P1 Start daily dogfooding with a usage/hours log; merge Dependabot #20 and #33. 1h. Run the release checklist's **Annotations** section on Windows as the first dogfooding session: it covers the two-window check below.
+1. P1 (you) First dogfooding session: install v0.0.4 on Windows, run the release checklist's **Annotations** section on `docs/release-check/`, and fill in the first row of the log. It covers the two-window check below.
+2. P0 Trademark (EUIPO/TMview) and domain check for "mdgloss". 0.5h. Needs the user; the agent can only prepare the searches.
 3. P2 stretch: week 5 spike on the comment popover data path. 1.5h.
 
 ## Open decisions and checks
 
-- **PR.** Push `chore/release-checklist` and open its PR into `main`.
 - **Check in the real app**: two windows on the same file, a highlight added in each, both survive. The unit tests use an in-memory fs; the Tauri `rename` replacing an existing file on Windows and macOS is the one path not exercised. It's now a checklist item.
 - **macOS Gatekeeper text is probably out of date.** `.github/release-header.md` says right-click → Open. Since macOS 15 that route no longer bypasses Gatekeeper for unsigned apps; the user has to go to **System Settings → Privacy & Security → Open Anyway**. Also unknown: whether the unsigned universal build opens at all on Apple Silicon or reports "damaged". The checklist asks to record both on the first Mac run (week 5) and fix the header then.
 - Selecting with the keyboard doesn't open the highlight toolbar (it opens on mouse-up only), so the checklist doesn't test it. Keyboard access comes with the week 5 sidebar.
