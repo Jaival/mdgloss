@@ -89,7 +89,7 @@ The file tree ([`src/files/tree.ts`](../src/files/tree.ts)) lists `.md` and `.ma
 
 The webview can only reach files the user picked. That's enforced by Tauri, not by the frontend:
 
-- [`capabilities/default.json`](../src-tauri/capabilities/default.json) allows the open dialog and a short list of fs calls (read/write text, read dir, stat, exists, mkdir, watch). There's no general shell or process access.
+- [`capabilities/default.json`](../src-tauri/capabilities/default.json) allows the open dialog and a short list of fs calls (read/write text, rename, read dir, stat, exists, mkdir, watch). There's no general shell or process access.
 - The fs plugin's scope starts empty, apart from `$APPDATA/annotations` (fallback annotation storage). Picking a file in the dialog grants that file. Picking a folder grants it **recursively** (`recursive: true`); without that, subfolders couldn't be listed.
 - Images are loaded through Tauri's asset protocol, which has its own scope, also empty at start. Opening a single file only grants that file, so a document's images wouldn't load. The Rust command `allow_document_images` fixes that:
   - it refuses documents the fs scope doesn't already allow
@@ -180,6 +180,8 @@ The full data model is in [SPEC.md](SPEC.md#data-model). Week 4 builds highlight
 - `save` resolves to where the annotations went. The header shows a drive icon, with an explanation in its tooltip, when the last save fell back to app storage.
 - **The `.mdgloss` grant.** A picked folder is granted as `folder/**`, but on macOS and Linux `**` doesn't match names starting with a dot. Before each sidecar access, the Rust command `allow_sidecar` grants the document's own `.mdgloss` folder. It refuses documents the fs scope doesn't already allow.
 - **Never lose annotations.** [`format.ts`](../src/annotations/format.ts) refuses a file with broken JSON or a newer `schemaVersion`; the hook then shows the error and doesn't save, so the file is never overwritten. A single highlight it can't read is left out of the UI but written back unchanged. Fields not managed yet (`bookmarks`, `lastRead`, unknown keys) are kept.
+- **Merged on save.** The sidecar can change while the file is open: another device syncs it, a `git pull` updates it, or a second window saves it. Each save re-reads it and merges by highlight id against the file the edit started from ([`merge.ts`](../src/annotations/merge.ts)): additions and edits from both sides are kept, a deletion on either side is kept, and when both sides edited a highlight the later `updated` wins. Unmanaged fields come from the copy on disk. The reader then shows the merged highlights. A sidecar that has disappeared counts as unchanged, so removing it elsewhere doesn't delete the highlights. Highlights moving from app storage count as new here, not as deleted on disk.
+- **Atomic writes.** The sidecar is written to `<name>.json.tmp` and renamed over the old file (`fs:allow-rename`), so a crash or a sync client never sees half a file. App storage is per device and isn't merged.
 - **Saves are queued** in [`useAnnotations`](../src/annotations/useAnnotations.ts), so they reach the disk in order. A failed save keeps the change on screen and shows the error in the header.
 - The content-hash part of the fallback key (from the spec) isn't built: the hash would let annotations follow a moved file, which nothing uses yet.
 
@@ -225,6 +227,6 @@ In edit mode (planned, could-have), highlights are re-anchored when the file is 
 - **No Content Security Policy.** `tauri.conf.json` has `"csp": null`. Rendering is already safe (raw HTML dropped, no `innerHTML`), but a CSP would be a second line of defence. Set one before the public release. It has to allow the asset protocol for images.
 - **Large documents re-render whole.** The pipeline runs on every source change. Fine for course notes; revisit if live reload (week 6) feels slow on big files.
 - **Highlights aren't reachable by keyboard yet.** They open by click. The sidebar list in week 5 gives keyboard access.
-- **Sidecar writes aren't atomic.** A crash mid-write could leave a broken file, which the app would then refuse to load (not overwrite). Write-then-rename needs the fs rename permission; add it if this ever happens.
+- **No reload while open.** A sidecar changed on disk is merged at the next save, not shown straight away. Reloading on change comes with file watching (week 6).
 - **Not built yet:** the browser and demo adapters, file watching in the UI, edit mode, export.
 - **Linux** isn't a release target for version 1, though CI compiles and tests the Rust code on Linux.

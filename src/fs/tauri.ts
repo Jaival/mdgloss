@@ -3,6 +3,7 @@ import {
   mkdir,
   readDir,
   readTextFile,
+  rename,
   stat,
   watch as tauriWatch,
   writeTextFile,
@@ -25,6 +26,10 @@ export class TauriFileSystem implements FileSystem {
 
   writeFile(path: string, content: string): Promise<void> {
     return writeTextFile(path, content);
+  }
+
+  rename(from: string, to: string): Promise<void> {
+    return rename(from, to);
   }
 
   async listDir(path: string): Promise<Entry[]> {

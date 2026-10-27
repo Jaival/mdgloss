@@ -19,6 +19,8 @@ export type Unsubscribe = () => void;
 export interface FileSystem {
   readFile(path: string): Promise<string>;
   writeFile(path: string, content: string): Promise<void>;
+  /** Moves a file, replacing any file already at `to`. */
+  rename(from: string, to: string): Promise<void>;
   listDir(path: string): Promise<Entry[]>;
   exists(path: string): Promise<boolean>;
   /** Creates a folder and any missing parents. Does nothing if it exists. */

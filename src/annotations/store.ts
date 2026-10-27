@@ -1,24 +1,37 @@
 import { baseName, joinPath } from "../fs/path";
 import type { FileSystem } from "../fs/types";
 import { emptyAnnotations, parseAnnotations, serializeAnnotations } from "./format";
+import { mergeAnnotations } from "./merge";
 import { sidecarPath } from "./sidecar";
 import type { AnnotationFile } from "./types";
 
 /** "sidecar": the .mdgloss folder next to the file. "app": the app's own storage. */
 export type StorageLocation = "sidecar" | "app";
 
+/** The result of a save: where it went, and what was written. */
+export interface Saved {
+  location: StorageLocation;
+  /** `annotations` merged with changes made elsewhere since `base`. */
+  file: AnnotationFile;
+}
+
 /** Where a markdown file's annotations are read from and written to. */
 export interface AnnotationStore {
   /** Throws if the stored file exists but can't be read safely; see parseAnnotations. */
   load(markdownPath: string): Promise<AnnotationFile>;
-  /** Resolves to where the annotations were written. */
-  save(markdownPath: string, annotations: AnnotationFile): Promise<StorageLocation>;
+  /** `base` is the file `annotations` was changed from, to merge changes made elsewhere. */
+  save(markdownPath: string, annotations: AnnotationFile, base: AnnotationFile): Promise<Saved>;
 }
 
 /**
  * Keeps annotations in `.mdgloss/<name>.json` next to each markdown file, so
  * they travel with the folder. `allow` runs before each access, to grant the
  * hidden folder (see allow_sidecar in src-tauri).
+ *
+ * The sidecar can change while the file is open (sync, `git pull`, another
+ * window), so each save re-reads it and merges (see mergeAnnotations). Saves
+ * write a temporary file and rename it over the sidecar, so a crash or a sync
+ * client never sees half a file.
  */
 export class SidecarStore implements AnnotationStore {
   constructor(
@@ -33,12 +46,22 @@ export class SidecarStore implements AnnotationStore {
     return parseAnnotations(await this.fs.readFile(path));
   }
 
-  async save(markdownPath: string, annotations: AnnotationFile): Promise<StorageLocation> {
+  async save(
+    markdownPath: string,
+    annotations: AnnotationFile,
+    base: AnnotationFile,
+  ): Promise<Saved> {
     await this.allow(markdownPath);
     const path = this.pathFor(markdownPath);
+    // A sidecar removed elsewhere isn't taken as deleting every highlight.
+    const file = (await this.fs.exists(path))
+      ? mergeAnnotations(base, annotations, parseAnnotations(await this.fs.readFile(path)))
+      : annotations;
     await this.fs.createDir(path.slice(0, Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"))));
-    await this.fs.writeFile(path, serializeAnnotations(annotations));
-    return "sidecar";
+    const temp = `${path}.tmp`;
+    await this.fs.writeFile(temp, serializeAnnotations(file));
+    await this.fs.rename(temp, path);
+    return { location: "sidecar", file };
   }
 
   /** sidecarPath uses "/", which Windows accepts too; keep the folder's own style. */
@@ -66,12 +89,13 @@ export class AppDataStore implements AnnotationStore {
     return parseAnnotations(await this.fs.readFile(path));
   }
 
-  async save(markdownPath: string, annotations: AnnotationFile): Promise<StorageLocation> {
+  /** App storage belongs to this device, so there is nothing to merge. */
+  async save(markdownPath: string, annotations: AnnotationFile): Promise<Saved> {
     const dir = await this.dir();
     await this.fs.createDir(dir);
     const path = joinPath(dir, await fileNameFor(markdownPath));
     await this.fs.writeFile(path, serializeAnnotations({ ...annotations, path: markdownPath }));
-    return "app";
+    return { location: "app", file: annotations };
   }
 
   private async pathFor(markdownPath: string): Promise<string> {
@@ -89,8 +113,8 @@ export class AppDataStore implements AnnotationStore {
  * highlight deleted later doesn't come back from there.
  */
 export class LocalAnnotationStore implements AnnotationStore {
-  /** Files whose app-storage highlights were merged in and still need moving. */
-  private pending = new Set<string>();
+  /** Per file, the ids of app-storage highlights that were merged in and still need moving. */
+  private pending = new Map<string, Set<string>>();
 
   constructor(
     private sidecar: AnnotationStore,
@@ -109,30 +133,37 @@ export class LocalAnnotationStore implements AnnotationStore {
       return file;
     }
 
-    this.pending.add(markdownPath);
     const ids = new Set(file.highlights.map((h) => h.id));
-    return {
-      ...file,
-      highlights: [...file.highlights, ...stored.highlights.filter((h) => !ids.has(h.id))],
-    };
+    const moving = stored.highlights.filter((h) => !ids.has(h.id));
+    this.pending.set(markdownPath, new Set(moving.map((h) => h.id)));
+    return { ...file, highlights: [...file.highlights, ...moving] };
   }
 
-  async save(markdownPath: string, annotations: AnnotationFile): Promise<StorageLocation> {
+  async save(
+    markdownPath: string,
+    annotations: AnnotationFile,
+    base: AnnotationFile,
+  ): Promise<Saved> {
+    // Highlights moving from app storage aren't in the sidecar yet; to the
+    // merge they are new here, not deleted on disk.
+    const moving = this.pending.get(markdownPath);
+    const sidecarBase = moving
+      ? { ...base, highlights: base.highlights.filter((h) => !moving.has(h.id)) }
+      : base;
+    let saved: Saved;
     try {
-      await this.sidecar.save(markdownPath, annotations);
+      saved = await this.sidecar.save(markdownPath, annotations, sidecarBase);
     } catch (e) {
       console.warn(`Could not write the sidecar for ${markdownPath}; using app storage`, e);
       this.pending.delete(markdownPath);
-      return this.app.save(markdownPath, annotations);
+      return this.app.save(markdownPath, annotations, base);
     }
-    if (this.pending.has(markdownPath)) {
-      await this.app.save(markdownPath, {
-        ...emptyAnnotations(baseName(markdownPath)),
-        movedTo: "sidecar",
-      });
+    if (moving) {
+      const moved = { ...emptyAnnotations(baseName(markdownPath)), movedTo: "sidecar" };
+      await this.app.save(markdownPath, moved, moved);
       this.pending.delete(markdownPath);
     }
-    return "sidecar";
+    return saved;
   }
 }
 

@@ -57,15 +57,19 @@ export function useAnnotations(store: AnnotationStore | null, path: string | nul
   function update(change: (highlights: Highlight[]) => Highlight[]) {
     const state = latest.current;
     if (!store || !state || state.path !== path || !state.file) return;
-    const file = { ...state.file, highlights: change(state.file.highlights) };
+    const base = state.file;
+    const file = { ...base, highlights: change(base.highlights) };
     const next = { ...state, file, error: null };
     latest.current = next;
     setLoaded(next);
     saving.current = saving.current
-      .then(() => store.save(state.path, file))
-      .then((location) => {
+      .then(() => store.save(state.path, file, base))
+      .then(({ location, file: saved }) => {
         if (latest.current?.path !== state.path) return;
-        latest.current = { ...latest.current, location };
+        // Show changes merged in from disk, unless a newer edit is waiting to
+        // save; that save merges them again.
+        const shown = latest.current.file === file ? saved : latest.current.file;
+        latest.current = { ...latest.current, file: shown, location };
         setLoaded(latest.current);
       })
       .catch((e: unknown) => {
