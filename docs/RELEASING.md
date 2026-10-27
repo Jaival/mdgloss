@@ -106,11 +106,83 @@ This field has to be updated by hand for every pre-release, and `version:set` re
    gh run watch $(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId')
    ```
 
-5. **Test the installers before publishing.** Download them from the draft (`gh release download v0.0.3 --dir /tmp/mdgloss-0.0.3`), install on Windows (and on a Mac if you have one), open a folder of notes, and check that the version in the file names is right.
+5. **Test the installers before publishing.** Download them from the draft (`gh release download v0.0.3 --dir /tmp/mdgloss-0.0.3`) and run the [release checklist](#release-checklist) on Windows, and from week 5 on a Mac too.
 
 6. **Review and publish the draft.** The notes already list the merged PRs. Tidy them if needed, for example by removing the "Release 0.0.3" PR or adding a summary at the top (`gh release view v0.0.3 --web`). Leave **pre-release** unticked and **Set as the latest release** ticked: GitHub never makes a pre-release the latest release, so it wouldn't appear in the repo's Releases box and the updater wouldn't see it. The pre-alpha warning in the notes and the README's pre-release badge say what stage the app is at. Publishing makes the release visible, and once the updater is in (week 7) it also sends the update to installed copies.
 
 7. **Note it in the build log** (`notes/linkedin-log.md`).
+
+## Release checklist
+
+Run this on the installers from the draft release, not on `bun run tauri dev`: it checks what users get, including the installer, the fs scopes and the bundled WebView. It takes about 20 minutes per platform. Windows for every release; macOS for every release from week 5 (spec risk: bugs that only show on macOS).
+
+Open an issue for anything that fails. A failure under **Install** or **Annotations** blocks publishing; a rendering glitch can ship if it's noted in the release notes.
+
+### Setup
+
+1. Copy [`release-check/`](release-check/) out of the repo to a folder whose path has a space and a non-ASCII letter, such as `Desktop/mdgloss check ö/`. Opening it inside the repo would write a `.mdgloss` folder into your working tree. On a Mac without a clone, download the folder from GitHub (`gh repo clone Jaival/mdgloss` or the "Download ZIP" button).
+2. Remove the copy's `.mdgloss` folder if it's left over from a previous run.
+3. Know where app storage is:
+   - Windows: `%APPDATA%\dev.mdgloss.app\annotations`
+   - macOS: `~/Library/Application Support/dev.mdgloss.app/annotations`
+
+### Install (both platforms)
+
+- [ ] The installer file names carry the release's version (`mdgloss_0.0.3_…`).
+- [ ] The OS warning appears and the steps in [`.github/release-header.md`](../.github/release-header.md) get past it. If they don't, write down what did and update the header before publishing.
+- [ ] The app starts, and the OS shows the new version (Windows: **Settings → Apps → Installed apps**; macOS: **Get Info** on the app).
+
+**Windows only**
+
+- [ ] The `.exe` (NSIS) installs and starts from the Start menu. For a minor release (`0.x.0`), uninstall and try the `.msi` too.
+
+**macOS only**
+
+- [ ] The `.dmg` opens, and dragging mdgloss to Applications works. On Apple Silicon it runs natively (**Activity Monitor → Kind: Apple**), not under Rosetta.
+- [ ] If macOS says the app "is damaged", the build isn't signed even ad hoc. `xattr -dr com.apple.quarantine /Applications/mdgloss.app` gets past it for testing; note it in the release notes and the handoff.
+
+### Opening files
+
+- [ ] **Open folder** on the copied folder: the tree shows `lecture.md` and `week2/notes.md`, folders first, and no `.mdgloss` folder.
+- [ ] `week2/notes.md` opens and renders (the folder grant reaches subfolders).
+- [ ] Restart the app, then **Open file** on `lecture.md` alone: it renders and its images load.
+
+### Rendering (`lecture.md`)
+
+- [ ] Headings, bold, italic, the list, the table and the footnote look right in light and dark theme. **System** theme follows the OS setting when you switch it.
+- [ ] The C code block is syntax-highlighted.
+- [ ] `©` and `é` show as characters, and `2 * 2 * 2` shows without backslashes.
+- [ ] Images: the logo shows twice (the second, the `![[…]]` embed, 64 px wide), and `missing.png` shows the "Image not found" placeholder.
+- [ ] Links: **Back to the top** scrolls up, **The Tauri website** opens the system browser, **Week 2 notes** opens that file in mdgloss, **The logo file** shows the file in Explorer/Finder.
+
+### Selections and highlights
+
+Make each selection by dragging with the mouse, pick a colour, then check the `quote` in `.mdgloss/lecture.md.json` (shown below as it appears in the JSON). The quote is the markdown source, so it keeps the markup.
+
+| Select in the reader                                             | Expected `quote`                                               |
+| ---------------------------------------------------------------- | -------------------------------------------------------------- |
+| `process is a program in execution`                              | `process_ is a program in **execution`                         |
+| `2 * 2 * 2`                                                      | `2 \* 2 \* 2`                                                  |
+| `© 2026 and café`                                                | `&copy; 2026 and caf&eacute;`                                  |
+| From `program counter and the open files.` to `A context switch` | `program counter and the open files.\n- A context switch`      |
+| From `Waiting for a CPU` (Ready row) to `Running`                | `Waiting for a CPU`, the cell's padding, then `\|\n\| Running` |
+| `fork();` in the code block                                      | `fork();`                                                      |
+
+- [ ] Every row gives its expected quote, and each highlight shows over exactly the selected text (the list and table ones as one mark per piece).
+- [ ] Triple-click a paragraph and highlight it: the mark covers the paragraph and nothing after it.
+- [ ] Click a highlight: change its colour with `1`–`4`, then delete one with `Del`. `Esc` and scrolling close the toolbar.
+- [ ] Highlight something in `week2/notes.md`: `week2/.mdgloss/notes.md.json` is created. On macOS this is the `.mdgloss` grant, which the folder's `**` scope doesn't cover.
+
+### Annotations
+
+- [ ] Restart the app and reopen the folder: every highlight is back. Open `lecture.md` with **Open file**: the same highlights show.
+- [ ] No `.json.tmp` file is left in either `.mdgloss` folder.
+- [ ] **Two windows.** Start a second copy of the app (Windows: launch it again from the Start menu; macOS: `open -n -a mdgloss`) and open `lecture.md` in both. Add a highlight in the first, then a different one in the second. The second shows both after its save; the first shows both after its next change. Restart: both are still there.
+- [ ] **Fallback storage** (last, because it deletes the highlights so far). Quit the app, delete the top-level `.mdgloss` folder, and take away write access to the copied folder:
+  - Windows (PowerShell): `icacls "<folder>" /deny "${env:USERNAME}:(WD,AD)"`, undo with `icacls "<folder>" /remove:d $env:USERNAME`
+  - macOS: `chmod a-w "<folder>"`, undo with `chmod u+w "<folder>"`
+
+  Open `lecture.md` and add a highlight: the header shows the app-storage icon, and a new file appears in app storage. Give write access back, restart, open `lecture.md` and add another highlight: both are now in `.mdgloss/lecture.md.json`, the icon is gone, and the app-storage file says `"movedTo": "sidecar"` with no highlights.
 
 ## When something goes wrong
 
