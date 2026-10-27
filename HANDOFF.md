@@ -19,7 +19,7 @@ Sprint 2026-10-26 (spec week 4, hardening): make highlights safe to use every da
 ## Next (sprint order)
 
 1. P1 (you) First dogfooding session: install v0.0.4 on Windows, run the release checklist's **Annotations** section on `docs/release-check/`, and fill in the first row of the log. It covers the two-window check below.
-2. P0 Trademark (EUIPO/TMview) and domain check for "mdgloss". 0.5h. Needs the user; the agent can only prepare the searches.
+2. P0 (you) Trademark check for "mdgloss". The searches, classes and how to read the hits are in `notes/trademark-check.md` (local, git-excluded). Domains .com/.app/.dev/.io/.org/.net, npm and crates.io are free as of 27 Oct; .eu and .de still need a registrar check.
 3. P2 stretch: week 5 spike on the comment popover data path. 1.5h.
 
 ## Open decisions and checks
