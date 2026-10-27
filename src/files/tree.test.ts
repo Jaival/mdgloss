@@ -23,6 +23,7 @@ function fakeFileSystem(files: string[]): FileSystem {
     exists: () => Promise.reject(new Error("not used")),
     createDir: () => Promise.reject(new Error("not used")),
     watch: () => () => {},
+    rename: () => Promise.reject(new Error("not used")),
     canWrite: () => Promise.resolve(false),
   };
 }
