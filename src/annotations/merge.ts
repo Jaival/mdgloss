@@ -6,10 +6,11 @@ import type { AnnotationFile, Highlight } from "./types";
  * `base` is what this window's change started from, `ours` the change, and
  * `theirs` what is on disk now.
  *
- * By highlight id: additions and edits from both sides are kept, a deletion on
- * either side is kept, and when both sides edited a highlight the later
- * `updated` wins. Fields this build doesn't manage come from `theirs`, the
- * newer copy.
+ * By highlight id: additions and edits from both sides are kept, and a deletion
+ * on either side is kept. When both sides edited a highlight, it is merged per
+ * field: a field changed on one side only keeps that change, and a field
+ * changed on both sides takes the value with the later `updated`. Fields this
+ * build doesn't manage come from `theirs`, the newer copy.
  */
 export function mergeAnnotations(
   base: AnnotationFile,
@@ -27,8 +28,10 @@ export function mergeAnnotations(
     if (old && !other) return [];
     if (!other || same(other, old)) return [mine];
     if (same(mine, old)) return [other];
-    // Both sides edited it, or both added the same id.
-    return [other.updated > mine.updated ? other : mine];
+    const [newer, older] = other.updated > mine.updated ? [other, mine] : [mine, other];
+    // Both added the same id: nothing to merge against.
+    if (!old) return [newer];
+    return [mergeFields(old, newer, older)];
   });
   // Added on disk; a highlight in base but not in ours was deleted here.
   const added = theirs.highlights.filter((h) => !oursIds.has(h.id) && !baseById.has(h.id));
@@ -36,10 +39,24 @@ export function mergeAnnotations(
   return { ...theirs, highlights: [...merged, ...added] };
 }
 
+/** `newer` with every field that only `older` changed since `base`. */
+function mergeFields(base: Highlight, newer: Highlight, older: Highlight): Highlight {
+  const merged: Record<string, unknown> = { ...newer };
+  const was: Record<string, unknown> = { ...base };
+  for (const [field, value] of Object.entries(older)) {
+    if (!equal(value, was[field]) && equal(merged[field], was[field])) merged[field] = value;
+  }
+  return merged as unknown as Highlight;
+}
+
 function byId(highlights: Highlight[]): Map<string, Highlight> {
   return new Map(highlights.map((h) => [h.id, h]));
 }
 
 function same(a: Highlight, b: Highlight | undefined): boolean {
-  return b !== undefined && JSON.stringify(a) === JSON.stringify(b);
+  return b !== undefined && equal(a, b);
+}
+
+function equal(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
 }

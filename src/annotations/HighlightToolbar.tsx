@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { Check, Trash2 } from "lucide-react";
+import { Check, MessageSquare, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { isTextEntry } from "@/lib/keys";
 import { cn } from "@/lib/utils";
 import { HIGHLIGHT_COLORS, type HighlightColor } from "./types";
 
@@ -27,6 +28,9 @@ interface HighlightToolbarProps {
   /** The colour of the highlight being edited; absent for a new selection. */
   color?: HighlightColor;
   onPick: (color: HighlightColor) => void;
+  /** Whether the highlight being edited has a comment. */
+  commented?: boolean;
+  onComment: () => void;
   /** Shown only when editing an existing highlight. */
   onDelete?: () => void;
   onDismiss: () => void;
@@ -34,22 +38,28 @@ interface HighlightToolbarProps {
 
 /**
  * The floating toolbar above a selection or a clicked highlight
- * (docs/DESIGN.md section 8). Keys: 1–4 pick a colour, Delete removes, Esc closes.
+ * (docs/DESIGN.md section 8). Keys: 1–4 pick a colour, C comments, Delete removes,
+ * Esc closes. Keys typed into a text field are left alone.
  */
 export function HighlightToolbar({
   anchor,
   color,
   onPick,
+  commented,
+  onComment,
   onDelete,
   onDismiss,
 }: HighlightToolbarProps) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.ctrlKey || event.metaKey || event.altKey || isTextEntry(event.target)) return;
       const index = Number(event.key) - 1;
       if (Number.isInteger(index) && HIGHLIGHT_COLORS[index]) {
         event.preventDefault();
         onPick(HIGHLIGHT_COLORS[index]);
+      } else if (event.key === "c" || event.key === "C") {
+        event.preventDefault();
+        onComment();
       } else if (event.key === "Escape") {
         onDismiss();
       } else if (onDelete && (event.key === "Delete" || event.key === "Backspace")) {
@@ -59,7 +69,7 @@ export function HighlightToolbar({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onPick, onDelete, onDismiss]);
+  }, [onPick, onComment, onDelete, onDismiss]);
 
   // Above the anchor, or below it when there's no room at the top of the window.
   const above = anchor.top > 56;
@@ -107,9 +117,26 @@ export function HighlightToolbar({
           </TooltipContent>
         </Tooltip>
       ))}
+      <Separator orientation="vertical" className="mx-0.5 h-5" />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            aria-label={commented ? "Edit comment" : "Comment"}
+            aria-pressed={commented}
+            onClick={onComment}
+          >
+            <MessageSquare className={cn(commented && "fill-current")} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {commented ? "Edit comment" : "Comment"} <Kbd>C</Kbd>
+        </TooltipContent>
+      </Tooltip>
       {onDelete && (
         <>
-          <Separator orientation="vertical" className="mx-0.5 h-5" />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

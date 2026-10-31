@@ -58,6 +58,27 @@ describe("mergeAnnotations", () => {
     expect(mergeAnnotations(file(a), file(green), file(pink)).highlights).toEqual([green]);
   });
 
+  it("keeps a comment from one side and a colour change from the other", () => {
+    const commented = { ...a, comment: "exam", updated: "2026-10-21T10:01:00.000Z" };
+    const green = { ...a, color: "green" as const, updated: "2026-10-21T10:02:00.000Z" };
+    const both = { ...a, comment: "exam", color: "green" as const, updated: green.updated };
+    expect(mergeAnnotations(file(a), file(commented), file(green)).highlights).toEqual([both]);
+    expect(mergeAnnotations(file(a), file(green), file(commented)).highlights).toEqual([both]);
+  });
+
+  it("lets the later comment win when both sides changed it", () => {
+    const first = { ...a, comment: "first", updated: "2026-10-21T10:01:00.000Z" };
+    const second = { ...a, comment: "second", updated: "2026-10-21T10:02:00.000Z" };
+    expect(mergeAnnotations(file(a), file(first), file(second)).highlights).toEqual([second]);
+    expect(mergeAnnotations(file(a), file(second), file(first)).highlights).toEqual([second]);
+  });
+
+  it("takes the later copy when both sides added the same id", () => {
+    const pink = { ...a, color: "pink" as const, updated: later };
+    expect(mergeAnnotations(file(), file(a), file(pink)).highlights).toEqual([pink]);
+    expect(mergeAnnotations(file(), file(pink), file(a)).highlights).toEqual([pink]);
+  });
+
   it("takes fields it doesn't manage from the copy on disk", () => {
     const theirs = { ...file(a), bookmarks: [{ id: "b_1" }] };
     const ours = { ...file(a, b), bookmarks: [] };

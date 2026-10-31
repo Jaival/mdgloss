@@ -36,6 +36,13 @@ describe("placeHighlights", () => {
     ]);
   });
 
+  it("flags a highlight with a comment", () => {
+    const plain = createHighlight(selection, "green");
+    const [withComment, without] = placeHighlights(source, [{ ...plain, comment: "exam" }, plain]);
+    expect(withComment.commented).toBe(true);
+    expect(without.commented).toBeUndefined();
+  });
+
   it("skips a highlight whose text has moved, until re-anchoring exists", () => {
     const moved = { ...createHighlight(selection, "green"), offset: 3 };
     expect(placeHighlights(source, [moved])).toEqual([]);

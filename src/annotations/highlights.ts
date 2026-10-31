@@ -7,6 +7,8 @@ export interface PlacedHighlight {
   start: number;
   end: number;
   color: HighlightColor;
+  /** Has a comment; gets a marker in the margin. */
+  commented?: boolean;
   /** Being edited in the toolbar; rendered with an outline. */
   active?: boolean;
 }
@@ -42,6 +44,7 @@ export function placeHighlights(source: string, highlights: Highlight[]): Placed
     const start = highlight.offset;
     const end = start + highlight.quote.length;
     if (source.slice(start, end) !== highlight.quote) return [];
-    return [{ id: highlight.id, start, end, color: highlight.color }];
+    const placed: PlacedHighlight = { id: highlight.id, start, end, color: highlight.color };
+    return [highlight.comment ? { ...placed, commented: true } : placed];
   });
 }
