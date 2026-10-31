@@ -86,7 +86,7 @@ Commit messages: a short imperative subject ("Check the release tag matches the 
 Major versions arrive as separate PRs. How to handle them:
 
 - **Grouped minor/patch PRs:** merge when CI is green. A newer grouped PR replaces the older one, so close superseded ones.
-- **Major versions:** read the changelog first. Example: TypeScript 7 (#2) fails CI because `typescript-eslint` doesn't support TS 7 yet. Leave it open, or close it and add an `ignore` rule for `typescript` major versions until the linter catches up.
+- **Major versions:** read the changelog first. Example: TypeScript 7 (#2) failed CI because `typescript-eslint` doesn't support TS 7 yet. #2 is closed, and `dependabot.yml` ignores `typescript` major versions. Remove that rule when `typescript-eslint`'s peer range includes 7 (`npm view typescript-eslint peerDependencies`).
 - **GitHub Actions:** keep both workflows on the same major version. Both use `actions/checkout@v7`, and `release.yml` uses `tauri-action@v1`. Check a new major version of `tauri-action` on a throwaway tag (see below) before relying on it.
 
 After merging any dependency PR, run `bun install` locally.
