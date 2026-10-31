@@ -38,6 +38,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { CommentPopover, type Anchor } from "./annotations/CommentPopover";
 import { createHighlight, placeHighlights } from "./annotations/highlights";
 import { HighlightToolbar } from "./annotations/HighlightToolbar";
 import { AppDataStore, LocalAnnotationStore, SidecarStore } from "./annotations/store";
@@ -68,10 +69,10 @@ interface Workspace {
   tree: TreeNode[];
 }
 
-/** What the floating highlight toolbar is acting on. */
-type ToolbarTarget =
-  | { type: "selection"; selection: SourceSelection; anchor: DOMRect }
-  | { type: "highlight"; id: string; anchor: DOMRect };
+/** What the floating highlight toolbar or the comment popover is acting on. */
+type Target =
+  | { type: "selection"; selection: SourceSelection; anchor: Anchor }
+  | { type: "highlight"; id: string; anchor: Anchor };
 
 interface OpenDocument {
   path: string;
@@ -96,11 +97,13 @@ function App() {
   const theme = useTheme();
   const readerRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLElement>(null);
-  const [toolbar, setToolbar] = useState<ToolbarTarget | null>(null);
+  const [toolbar, setToolbar] = useState<Target | null>(null);
+  const [commenting, setCommenting] = useState<Target | null>(null);
   const annotations = useAnnotations(annotationStore, doc?.path ?? null);
   const { update } = annotations;
 
-  const activeId = toolbar?.type === "highlight" ? toolbar.id : null;
+  const editing = toolbar ?? commenting;
+  const activeId = editing?.type === "highlight" ? editing.id : null;
   const placed = useMemo(
     () =>
       doc
@@ -220,9 +223,7 @@ function App() {
     if (range.collapsed) return;
     const mapped = toSourceSelection(range, article, doc.content);
     setToolbar(
-      mapped
-        ? { type: "selection", selection: mapped, anchor: range.getBoundingClientRect() }
-        : null,
+      mapped ? { type: "selection", selection: mapped, anchor: range.cloneRange() } : null,
     );
   }
 
@@ -231,11 +232,7 @@ function App() {
     if (!window.getSelection()?.isCollapsed) return;
     const mark = (event.target as Element).closest("mark[data-highlight]");
     const id = mark?.getAttribute("data-highlight");
-    setToolbar(
-      mark && id && annotations.editable
-        ? { type: "highlight", id, anchor: mark.getBoundingClientRect() }
-        : null,
-    );
+    setToolbar(mark && id && annotations.editable ? { type: "highlight", id, anchor: mark } : null);
   }
 
   const closeToolbar = useCallback(() => setToolbar(null), []);
@@ -256,15 +253,41 @@ function App() {
     [toolbar, update],
   );
 
+  const openComment = useCallback(() => {
+    setCommenting(toolbar);
+    setToolbar(null);
+  }, [toolbar]);
+
+  /** A new selection becomes a yellow highlight only once it has a comment. */
+  function saveComment(comment: string | null) {
+    const target = commenting;
+    setCommenting(null);
+    if (target?.type === "selection") {
+      if (comment === null) return;
+      update((highlights) => [
+        ...highlights,
+        { ...createHighlight(target.selection, "yellow"), comment },
+      ]);
+      window.getSelection()?.removeAllRanges();
+    } else if (target?.type === "highlight") {
+      const existing = annotations.highlights.find((h) => h.id === target.id);
+      if (!existing || existing.comment === comment) return;
+      const updated = new Date().toISOString();
+      update((highlights) =>
+        highlights.map((h) => (h.id === target.id ? { ...h, comment, updated } : h)),
+      );
+    }
+  }
+
   const deleteHighlight = useCallback(() => {
     if (toolbar?.type !== "highlight") return;
     update((highlights) => highlights.filter((h) => h.id !== toolbar.id));
     setToolbar(null);
   }, [toolbar, update]);
 
-  const editedColor =
-    toolbar?.type === "highlight"
-      ? annotations.highlights.find((h) => h.id === toolbar.id)?.color
+  const edited =
+    editing?.type === "highlight"
+      ? annotations.highlights.find((h) => h.id === editing.id)
       : undefined;
   const headerError = error ?? annotations.error;
 
@@ -437,11 +460,21 @@ function App() {
         </div>
         {doc && toolbar && (
           <HighlightToolbar
-            anchor={toolbar.anchor}
-            color={editedColor}
+            anchor={toolbar.anchor.getBoundingClientRect()}
+            color={edited?.color}
             onPick={pickColor}
+            commented={Boolean(edited?.comment)}
+            onComment={openComment}
             onDelete={toolbar.type === "highlight" ? deleteHighlight : undefined}
             onDismiss={closeToolbar}
+          />
+        )}
+        {doc && commenting && (
+          <CommentPopover
+            anchor={commenting.anchor}
+            comment={edited?.comment ?? null}
+            onSave={saveComment}
+            onCancel={() => setCommenting(null)}
           />
         )}
       </SidebarInset>
