@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { isTextEntry } from "@/lib/keys";
 import { cn } from "@/lib/utils";
 import { HIGHLIGHT_COLORS, type HighlightColor } from "./types";
 
@@ -45,7 +46,7 @@ export function HighlightToolbar({
 }: HighlightToolbarProps) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.ctrlKey || event.metaKey || event.altKey || isTextEntry(event.target)) return;
       const index = Number(event.key) - 1;
       if (Number.isInteger(index) && HIGHLIGHT_COLORS[index]) {
         event.preventDefault();
