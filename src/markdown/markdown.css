@@ -1,6 +1,8 @@
 /* Reading layout for rendered markdown. Colours are the design tokens in index.css;
    the scale follows docs/DESIGN.md section 4. */
 .markdown-body {
+  /* Containing block for the comment markers in the margin. */
+  position: relative;
   /* Reading size. A future S/M/L setting only needs to change this. */
   --reader-size: 17px;
 
@@ -325,6 +327,23 @@
 
 .markdown-body mark.highlight-purple {
   background: var(--highlight-purple);
+}
+
+/* A commented highlight gets a marker in the right margin, on the line where it
+   starts, so colour isn't the only signal (docs/DESIGN.md section 3). With no
+   top set, an absolute box keeps the vertical position it would have inline. */
+.markdown-body mark.highlight[data-comment]::before {
+  content: "";
+  position: absolute;
+  right: 0.5rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.4em;
+  background: var(--muted-foreground);
+  /* lucide MessageSquare */
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  pointer-events: none;
 }
 
 /* The highlight the toolbar is editing. */

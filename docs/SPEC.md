@@ -86,7 +86,7 @@ os-course-notes/
 
 When the sidecar can't be written (a read-only location, or a browser without folder access), annotations go into the app's own storage (app data directory on desktop, IndexedDB on the web), keyed by absolute path. A content hash in the key, so annotations could follow a moved file, is deferred until something needs it. The UI shows a small indicator when a file uses this fallback. Annotations found in the app's storage for a file whose sidecar can be written are moved into the sidecar.
 
-A sidecar can change while the app has its file open: another device syncs it, a `git pull` updates it, or a second window saves it. Before every write, the app re-reads the sidecar and merges by highlight `id` against the version it last read or wrote. Additions and edits from both sides are kept, a deletion on either side is kept, and when both sides changed the same highlight the later `updated` wins. Writes go to a temporary file that is then renamed over the sidecar, so a crash or a sync client never sees a half-written file.
+A sidecar can change while the app has its file open: another device syncs it, a `git pull` updates it, or a second window saves it. Before every write, the app re-reads the sidecar and merges by highlight `id` against the version it last read or wrote. Additions and edits from both sides are kept, a deletion on either side is kept, and when both sides changed the same highlight it is merged per field: a field changed on one side only is kept, and for a field changed on both sides the later `updated` wins. Writes go to a temporary file that is then renamed over the sidecar, so a crash or a sync client never sees a half-written file.
 
 ### Data model
 

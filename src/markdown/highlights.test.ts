@@ -140,6 +140,22 @@ describe("applyHighlights", () => {
     ]);
   });
 
+  it("puts the comment marker on the first mark of a commented highlight only", () => {
+    const root = mount("One two.\n\nThree four.\n", [
+      { id: "a", start: 4, end: 15, color: "yellow", commented: true },
+      { id: "b", start: 0, end: 3, color: "pink" },
+    ]);
+    const marks = [...root.querySelectorAll("mark")].map((m) => [
+      m.textContent,
+      m.hasAttribute("data-comment"),
+    ]);
+    expect(marks).toEqual([
+      ["One", false],
+      ["two.", true],
+      ["Three", false],
+    ]);
+  });
+
   it("outlines the active highlight", () => {
     const root = mount(source, [{ id: "a", start: 4, end: 7, color: "yellow", active: true }]);
     expect(root.querySelector("mark")!.hasAttribute("data-active")).toBe(true);

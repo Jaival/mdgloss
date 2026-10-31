@@ -10,7 +10,8 @@ import { alignText, type SourceSpan } from "../selection/align";
  * piece of text, so it renders across element boundaries without breaking the
  * HTML structure. Where highlights overlap, the later one in the list wins.
  * Text the renderer made up (footnote numbers, whitespace between table rows)
- * is never marked.
+ * is never marked. The first mark of a commented highlight carries
+ * data-comment, for the margin marker.
  */
 export function applyHighlights(tree: Root, source: string, highlights: PlacedHighlight[]): Root {
   if (highlights.length === 0) return tree;
@@ -22,6 +23,13 @@ export function applyHighlights(tree: Root, source: string, highlights: PlacedHi
     if (typeof from !== "number" || typeof to !== "number") return;
     const touching = highlights.filter((h) => h.start < to && h.end > from);
     if (touching.length > 0) markHost(node, source, from, to, touching);
+  });
+
+  const commented = new Set(highlights.filter((h) => h.commented).map((h) => h.id));
+  visit(copy, "element", (node) => {
+    const id = node.properties.dataHighlight;
+    if (node.tagName !== "mark" || typeof id !== "string" || !commented.delete(id)) return;
+    node.properties.dataComment = true;
   });
   return copy;
 }
