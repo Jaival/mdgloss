@@ -16,11 +16,13 @@ Sprint 2026-10-26 (spec week 4, hardening): make highlights safe to use every da
 - **Dependabot #20 (Cargo) and #33 (Bun) merged** (27 Oct). Both were merged together onto `main` locally first and every `ci.yml` step passed. #2 (TypeScript 7) is still open and out of scope.
 - **Dogfooding log** in [`docs/DOGFOODING.md`](docs/DOGFOODING.md): sessions, problems with severity and count, missed days, weekly totals. Linked from the README. The first row (27 Oct, Windows, the checklist's **Annotations** section) is there to fill in; daily use hasn't started until that session is done.
 
+- **Spike: comment popover data path** in [`docs/spikes/comment-popover.md`](docs/spikes/comment-popover.md). The `comment` field and the save path already work; week 5 needs four fixes before a text field goes on top. The one that loses data, confirmed with a throwaway test: a comment in one window and a colour change in another on the same highlight, and the whole-highlight merge drops the comment. Fix is a per-field merge in `merge.ts`.
+
 ## Next (sprint order)
 
-1. P1 (you) First dogfooding session: install v0.0.4 on Windows, run the release checklist's **Annotations** section on `docs/release-check/`, and fill in the first row of the log. It covers the two-window check below.
+1. P1 (you) First dogfooding session on Windows: run the release checklist's **Annotations** section on `docs/release-check/` and fill in the first row of the log. **v0.0.4 doesn't include #36** (it was tagged on 17 Oct), so the two-window and no-`.tmp` checks need `bun tauri dev` (version `dev` in the log) or a v0.0.5 release.
 2. P0 (you) Trademark check for "mdgloss". The searches, classes and how to read the hits are in `notes/trademark-check.md` (local, git-excluded). Domains .com/.app/.dev/.io/.org/.net, npm and crates.io are free as of 27 Oct; .eu and .de still need a registrar check.
-3. P2 stretch: week 5 spike on the comment popover data path. 1.5h.
+3. Week 5 (2 Nov): comments and sidebar. Start with the per-field merge from the spike, then the comment popover.
 
 ## Open decisions and checks
 
