@@ -20,10 +20,10 @@ There are no component tests and the reader needs Tauri to open a file, so every
 
 ## Next (sprint order)
 
-1. P0 (you) Click through #44, #45 and #46 in `bun tauri dev`, then merge the five PRs into `sprint-5` in order.
+1. Done 31 Oct: #44, #45 and #46 checked in `bun tauri dev`; all five PRs merged into `sprint-5`.
 2. P1 (you) Run the release checklist on a Mac (week 5 "done when"): single file and folder, `.mdgloss` grant, selections across formatting. Record the Gatekeeper text and whether the universal build opens on Apple Silicon, then fix `.github/release-header.md`.
-3. Still open from week 4: first dogfooding session on Windows, and the trademark check (`notes/trademark-check.md`).
-4. Merge `sprint-5` into `main`, update the week 5 row in SPEC.md, tag v0.0.5 so the dogfooding log can use a release with #36.
+3. Still open from week 4: first dogfooding session on Windows. The trademark check found no conflicts (31 Oct).
+4. Done 31 Oct: `sprint-5` merged into `main`, week 5 row updated, v0.0.5 tagged.
 
 ## Open decisions and checks
 
