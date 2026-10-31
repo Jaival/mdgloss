@@ -1,33 +1,34 @@
 # Handoff
 
-Sprint 2026-10-26 (spec week 4, hardening): make highlights safe to use every day on real course material, on Windows and macOS, without losing an annotation.
+Sprint 2026-11-02 (spec week 5): comments and sidebar. Branch `sprint-5`; each step is its own PR into `sprint-5`, stacked in order, and `sprint-5` merges into `main` when the week is done.
 
-## Done
+## Done (PRs open, 31 Oct)
 
-- **Sidecar merged before each save, written atomically** ([#36](https://github.com/Jaival/mdgloss/pull/36), merged 27 Oct).
-  - [`merge.ts`](src/annotations/merge.ts): three-way merge by highlight id. Additions and edits from both sides are kept, a deletion on either side is kept, and when both sides edited a highlight the later `updated` wins.
-  - `AnnotationStore.save(path, annotations, base)` now takes the file the edit started from and resolves to `{ location, file }`. `useAnnotations` shows the merged file unless a newer edit is waiting to save.
-  - `SidecarStore` writes `<name>.json.tmp` and renames it over the sidecar. Added `rename` to `FileSystem` and `fs:allow-rename` to the capability.
-  - Covered by `merge.test.ts` and `store.test.ts`. Format, lint, typecheck, tests, build, cargo fmt/clippy/test all pass locally.
-- **Release checklist for both platforms** ([#37](https://github.com/Jaival/mdgloss/pull/37), merged 27 Oct).
-  - [Release checklist](docs/RELEASING.md#release-checklist) in `docs/RELEASING.md`: setup, install (both, Windows only, macOS only), opening files, rendering, selections and highlights, annotations (restart, no `.tmp` left, two windows, fallback storage). Step 5 of "Cutting a release" now points to it.
-  - [`docs/release-check/`](docs/release-check/) is the fixed test folder: formatting, escapes, entities, list, table, code, footnote, the four link kinds, a relative image, an `![[…]]` embed, a missing image, and a subfolder for the recursive grant and the `.mdgloss` grant.
-  - The six expected quotes were checked by running `toSourceSelection` on the fixture in a throwaway Vitest file. The checklist itself hasn't been run against an installer yet; the first run is the next release.
-- **Dependabot #20 (Cargo) and #33 (Bun) merged** (27 Oct). Both were merged together onto `main` locally first and every `ci.yml` step passed. #2 (TypeScript 7) is still open and out of scope.
-- **Dogfooding log** in [`docs/DOGFOODING.md`](docs/DOGFOODING.md): sessions, problems with severity and count, missed days, weekly totals. Linked from the README. The first row (27 Oct, Windows, the checklist's **Annotations** section) is there to fill in; daily use hasn't started until that session is done.
+Merge in this order. After each merge the next PR's diff shrinks to its own commit.
 
-- **Spike: comment popover data path** in [`docs/spikes/comment-popover.md`](docs/spikes/comment-popover.md). The `comment` field and the save path already work; week 5 needs four fixes before a text field goes on top. The one that loses data, confirmed with a throwaway test: a comment in one window and a colour change in another on the same highlight, and the whole-highlight merge drops the comment. Fix is a per-field merge in `merge.ts`.
+1. [#42](https://github.com/Jaival/mdgloss/pull/42) **Per-field merge** in [`merge.ts`](src/annotations/merge.ts). Spike finding 1: a comment in one window and a colour change in another on the same highlight now both survive. Same-field conflicts still go to the later `updated`.
+2. [#43](https://github.com/Jaival/mdgloss/pull/43) **Toolbar ignores keys typed in a text field** ([`keys.ts`](src/lib/keys.ts)). Spike finding 2.
+3. [#44](https://github.com/Jaival/mdgloss/pull/44) **Comment popover** ([`CommentPopover.tsx`](src/annotations/CommentPopover.tsx)). Toolbar button or `C`. Anchored to the `<mark>` or the selection `Range`, so it follows the text on scroll. Saves once on `Ctrl/Cmd+Enter`, click outside or blur; `Esc` discards. A comment on a new selection creates a yellow highlight in one save.
+4. [#45](https://github.com/Jaival/mdgloss/pull/45) **Margin marker** for commented highlights: `data-comment` on the first mark, a CSS `MessageSquare` in the right margin.
+5. Notes panel PR (this branch, `feat/notes-panel`): [`NotesPanel.tsx`](src/annotations/NotesPanel.tsx), toggled from the header. Cards in document order; click scrolls and pulses; menu edits the comment or deletes.
+
+All five pass format, lint, typecheck, tests (141) and build locally. None touch Rust.
+
+## Not checked in the app
+
+There are no component tests and the reader needs Tauri to open a file, so every UI step above is unchecked by hand. Run `bun tauri dev` on `docs/release-check/` and go through the checks listed in #44, #45 and the notes panel PR before merging `sprint-5` into `main`.
 
 ## Next (sprint order)
 
-1. P1 (you) First dogfooding session on Windows: run the release checklist's **Annotations** section on `docs/release-check/` and fill in the first row of the log. **v0.0.4 doesn't include #36** (it was tagged on 17 Oct), so the two-window and no-`.tmp` checks need `bun tauri dev` (version `dev` in the log) or a v0.0.5 release.
-2. P0 (you) Trademark check for "mdgloss". The searches, classes and how to read the hits are in `notes/trademark-check.md` (local, git-excluded). Domains .com/.app/.dev/.io/.org/.net, npm and crates.io are free as of 27 Oct; .eu and .de still need a registrar check.
-3. Week 5 (2 Nov): comments and sidebar. Start with the per-field merge from the spike, then the comment popover.
+1. P0 (you) Click through #44, #45 and the notes panel in `bun tauri dev`, then merge the five PRs into `sprint-5` in order.
+2. P1 (you) Run the release checklist on a Mac (week 5 "done when"): single file and folder, `.mdgloss` grant, selections across formatting. Record the Gatekeeper text and whether the universal build opens on Apple Silicon, then fix `.github/release-header.md`.
+3. Still open from week 4: first dogfooding session on Windows, and the trademark check (`notes/trademark-check.md`).
+4. Merge `sprint-5` into `main`, update the week 5 row in SPEC.md, tag v0.0.5 so the dogfooding log can use a release with #36.
 
 ## Open decisions and checks
 
-- **Check in the real app**: two windows on the same file, a highlight added in each, both survive. The unit tests use an in-memory fs; the Tauri `rename` replacing an existing file on Windows and macOS is the one path not exercised. It's now a checklist item.
-- **macOS Gatekeeper text is probably out of date.** `.github/release-header.md` says right-click → Open. Since macOS 15 that route no longer bypasses Gatekeeper for unsigned apps; the user has to go to **System Settings → Privacy & Security → Open Anyway**. Also unknown: whether the unsigned universal build opens at all on Apple Silicon or reports "damaged". The checklist asks to record both on the first Mac run (week 5) and fix the header then.
-- Selecting with the keyboard doesn't open the highlight toolbar (it opens on mouse-up only), so the checklist doesn't test it. Keyboard access comes with the week 5 sidebar.
-- A sidecar on disk that can't be read (broken JSON, newer `schemaVersion`) makes the save fail, so `LocalAnnotationStore` falls back to app storage and the header says the folder couldn't be written. Nothing is lost, but the tooltip is wrong for that case. Left as is because it needs a broken sidecar to appear while the file is open.
-- A sidecar changed on disk is merged at the next save, not shown straight away. Reload on change comes with file watching (week 6).
+- **Left out of the notes panel, from DESIGN.md:** opening it on the first annotation (it opens only from the header button), and the `Sheet` below ~900px window width. Both are small; decide after daily use.
+- **The card quote is the raw source text**, so `**bold**` shows its asterisks. Showing the rendered text needs the marks' DOM text or a markdown-to-text pass. Decide after daily use.
+- **Popover focus after "Edit comment" in the card menu.** The menu is told not to take focus back so the popover keeps it. If the popover closes straight away in the app, this is why.
+- No shortcut for the notes panel yet. Keyboard shortcuts are week 8.
+- From week 4, still open: macOS Gatekeeper text, the tooltip when a sidecar can't be read, a sidecar changed on disk shows only after the next save (file watching is week 6).
