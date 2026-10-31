@@ -3,7 +3,7 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { appDataDir } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
-import { FileText, FolderOpen, HardDrive, Monitor, Moon, Sun } from "lucide-react";
+import { FileText, FolderOpen, HardDrive, Monitor, Moon, PanelRight, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -38,9 +38,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { CommentPopover, type Anchor } from "./annotations/CommentPopover";
 import { createHighlight, placeHighlights } from "./annotations/highlights";
 import { HighlightToolbar } from "./annotations/HighlightToolbar";
+import { NotesPanel } from "./annotations/NotesPanel";
 import { AppDataStore, LocalAnnotationStore, SidecarStore } from "./annotations/store";
 import type { HighlightColor } from "./annotations/types";
 import { useAnnotations } from "./annotations/useAnnotations";
@@ -99,6 +101,7 @@ function App() {
   const articleRef = useRef<HTMLElement>(null);
   const [toolbar, setToolbar] = useState<Target | null>(null);
   const [commenting, setCommenting] = useState<Target | null>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
   const annotations = useAnnotations(annotationStore, doc?.path ?? null);
   const { update } = annotations;
 
@@ -113,6 +116,13 @@ function App() {
         : [],
     [doc, annotations.highlights, activeId],
   );
+  // The panel lists what the reader shows, in document order.
+  const listed = useMemo(() => {
+    const start = new Map(placed.map((h) => [h.id, h.start]));
+    return annotations.highlights
+      .filter((h) => start.has(h.id))
+      .sort((a, b) => start.get(a.id)! - start.get(b.id)!);
+  }, [placed, annotations.highlights]);
 
   // Start each newly opened file at the top.
   useEffect(() => {
@@ -279,11 +289,40 @@ function App() {
     }
   }
 
+  const removeHighlight = useCallback(
+    (id: string) => update((highlights) => highlights.filter((h) => h.id !== id)),
+    [update],
+  );
+
   const deleteHighlight = useCallback(() => {
     if (toolbar?.type !== "highlight") return;
-    update((highlights) => highlights.filter((h) => h.id !== toolbar.id));
+    removeHighlight(toolbar.id);
     setToolbar(null);
-  }, [toolbar, update]);
+  }, [toolbar, removeHighlight]);
+
+  /** Scrolls the reader to a highlight and pulses it once. Returns its first mark. */
+  function goToHighlight(id: string): Element | undefined {
+    const marks = [
+      ...(articleRef.current?.querySelectorAll(`mark[data-highlight="${CSS.escape(id)}"]`) ?? []),
+    ];
+    if (marks.length === 0) return undefined;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    marks[0].scrollIntoView({ block: "center", behavior: still ? "auto" : "smooth" });
+    if (!still) {
+      for (const mark of marks) {
+        mark.animate(
+          [{ boxShadow: "0 0 0 4px var(--ring)" }, { boxShadow: "0 0 0 0 transparent" }],
+          { duration: 700, delay: 250, easing: "ease-out" },
+        );
+      }
+    }
+    return marks[0];
+  }
+
+  function editCommentFromPanel(id: string) {
+    const mark = goToHighlight(id);
+    if (mark) setCommenting({ type: "highlight", id, anchor: mark });
+  }
 
   const edited =
     editing?.type === "highlight"
@@ -382,9 +421,31 @@ function App() {
               {headerError}
             </span>
           )}
+          {doc && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-auto"
+                  aria-label="Toggle notes"
+                  aria-pressed={notesOpen}
+                  onClick={() => setNotesOpen((open) => !open)}
+                >
+                  <PanelRight />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Toggle notes</TooltipContent>
+            </Tooltip>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="ml-auto" aria-label="Theme">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(!doc && "ml-auto")}
+                aria-label="Theme"
+              >
                 <ThemeIcon />
               </Button>
             </DropdownMenuTrigger>
@@ -411,51 +472,61 @@ function App() {
           </DropdownMenu>
         </header>
 
-        <div
-          className="min-h-0 flex-1 overflow-y-auto"
-          ref={readerRef}
-          // The toolbar is fixed in the window, so it would drift away from its text.
-          onScroll={toolbar ? closeToolbar : undefined}
-        >
-          {doc ? (
-            <article
-              className="markdown-body px-8 py-12"
-              ref={articleRef}
-              onMouseUp={onReaderMouseUp}
-              onClick={onReaderClick}
-            >
-              <Markdown
-                source={doc.content}
-                highlights={placed}
-                resolveImageSrc={(src) => imageSrc(doc, src)}
-                onLinkClick={(href) => followLink(doc.path, href)}
-              />
-            </article>
-          ) : (
-            <Empty className="h-full">
-              <EmptyHeader>
-                <EmptyTitle>{workspace ? "No file open." : "Nothing open."}</EmptyTitle>
-                <EmptyDescription>
-                  {workspace
-                    ? "Pick a file from the sidebar to start reading."
-                    : "Open a markdown file or folder to start reading."}
-                </EmptyDescription>
-              </EmptyHeader>
-              {!workspace && (
-                <EmptyContent>
-                  <div className="flex gap-2">
-                    <Button onClick={openFolder}>
-                      <FolderOpen data-icon="inline-start" />
-                      Open folder
-                    </Button>
-                    <Button variant="outline" onClick={openFile}>
-                      <FileText data-icon="inline-start" />
-                      Open file
-                    </Button>
-                  </div>
-                </EmptyContent>
-              )}
-            </Empty>
+        <div className="flex min-h-0 flex-1">
+          <div
+            className="min-w-0 flex-1 overflow-y-auto"
+            ref={readerRef}
+            // The toolbar is fixed in the window, so it would drift away from its text.
+            onScroll={toolbar ? closeToolbar : undefined}
+          >
+            {doc ? (
+              <article
+                className="markdown-body px-8 py-12"
+                ref={articleRef}
+                onMouseUp={onReaderMouseUp}
+                onClick={onReaderClick}
+              >
+                <Markdown
+                  source={doc.content}
+                  highlights={placed}
+                  resolveImageSrc={(src) => imageSrc(doc, src)}
+                  onLinkClick={(href) => followLink(doc.path, href)}
+                />
+              </article>
+            ) : (
+              <Empty className="h-full">
+                <EmptyHeader>
+                  <EmptyTitle>{workspace ? "No file open." : "Nothing open."}</EmptyTitle>
+                  <EmptyDescription>
+                    {workspace
+                      ? "Pick a file from the sidebar to start reading."
+                      : "Open a markdown file or folder to start reading."}
+                  </EmptyDescription>
+                </EmptyHeader>
+                {!workspace && (
+                  <EmptyContent>
+                    <div className="flex gap-2">
+                      <Button onClick={openFolder}>
+                        <FolderOpen data-icon="inline-start" />
+                        Open folder
+                      </Button>
+                      <Button variant="outline" onClick={openFile}>
+                        <FileText data-icon="inline-start" />
+                        Open file
+                      </Button>
+                    </div>
+                  </EmptyContent>
+                )}
+              </Empty>
+            )}
+          </div>
+          {doc && notesOpen && (
+            <NotesPanel
+              highlights={listed}
+              onSelect={goToHighlight}
+              onEditComment={editCommentFromPanel}
+              onDelete={removeHighlight}
+            />
           )}
         </div>
         {doc && toolbar && (
