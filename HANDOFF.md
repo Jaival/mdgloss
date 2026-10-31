@@ -1,10 +1,10 @@
 # Handoff
 
-Sprint 2026-11-02 (spec week 5): comments and sidebar. Branch `sprint-5`; each step is its own PR into `sprint-5`, stacked in order, and `sprint-5` merges into `main` when the week is done.
+Sprint 2026-11-02 (spec week 5): comments and sidebar. Branch `sprint-5`; each step is its own PR, stacked: #42 targets `sprint-5` and each later PR targets the one before it, and `sprint-5` merges into `main` when the week is done.
 
 ## Done (PRs open, 31 Oct)
 
-Merge in this order. After each merge the next PR's diff shrinks to its own commit.
+Merge in this order, each into `sprint-5`. Head branches are deleted on merge, so GitHub retargets the next PR to `sprint-5`. Merge a PR only after its base PR has merged; otherwise it lands in the feature branch (as #10 did).
 
 1. [#42](https://github.com/Jaival/mdgloss/pull/42) **Per-field merge** in [`merge.ts`](src/annotations/merge.ts). Spike finding 1: a comment in one window and a colour change in another on the same highlight now both survive. Same-field conflicts still go to the later `updated`.
 2. [#43](https://github.com/Jaival/mdgloss/pull/43) **Toolbar ignores keys typed in a text field** ([`keys.ts`](src/lib/keys.ts)). Spike finding 2.
