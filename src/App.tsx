@@ -522,6 +522,7 @@ function App() {
           {doc && notesOpen && (
             <NotesPanel
               highlights={listed}
+              orphaned={placement.orphaned}
               onSelect={goToHighlight}
               onEditComment={editCommentFromPanel}
               onDelete={removeHighlight}

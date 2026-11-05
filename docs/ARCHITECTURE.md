@@ -211,7 +211,7 @@ In edit mode (planned, could-have), highlights are re-anchored when the file is 
 ## UI and design
 
 - The shell is shadcn/ui on Tailwind v4: a collapsible sidebar with the file tree, a toolbar with a notes toggle and a theme menu, and the notes panel on the right. Tokens and type scale come from [DESIGN.md](DESIGN.md).
-- The notes panel ([`NotesPanel.tsx`](../src/annotations/NotesPanel.tsx)) lists the highlights the reader shows, in document order: quote with a border in its colour, comment, date. Clicking a card scrolls to the highlight and pulses it once (no pulse and no smooth scroll with `prefers-reduced-motion`). Each card's menu edits the comment, in the same popover as the reader, or deletes the highlight. It is closed by default.
+- The notes panel ([`NotesPanel.tsx`](../src/annotations/NotesPanel.tsx)) lists the highlights the reader shows, in document order: quote with a border in its colour, comment, date. Clicking a card scrolls to the highlight and pulses it once (no pulse and no smooth scroll with `prefers-reduced-motion`). Each card's menu edits the comment, in the same popover as the reader, or deletes the highlight. Orphaned highlights follow in a collapsed "Text not found" section (`Unlink` icon, muted cards): quote, comment and date, and a menu that only deletes. Re-attaching one to new text is not built yet. The panel is closed by default.
 - The reader's font size is driven by a `--reader-size` CSS variable. Markdown styles are in `src/markdown/markdown.css`.
 - Theme is `system`, `light` or `dark`, saved in `localStorage` under `mdgloss.theme`, applied as a `.dark` class on `<html>`.
 
