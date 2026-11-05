@@ -1,5 +1,5 @@
 import { baseName, joinPath } from "../fs/path";
-import type { FileSystem } from "../fs/types";
+import type { FileSystem, Unsubscribe } from "../fs/types";
 import { emptyAnnotations, parseAnnotations, serializeAnnotations } from "./format";
 import { mergeAnnotations } from "./merge";
 import { sidecarPath } from "./sidecar";
@@ -21,6 +21,11 @@ export interface AnnotationStore {
   load(markdownPath: string): Promise<AnnotationFile>;
   /** `base` is the file `annotations` was changed from, to merge changes made elsewhere. */
   save(markdownPath: string, annotations: AnnotationFile, base: AnnotationFile): Promise<Saved>;
+  /**
+   * Calls `onChange` when the stored file changes on disk, by this app or
+   * anything else, so the caller can load it again.
+   */
+  watch(markdownPath: string, onChange: () => void): Unsubscribe;
 }
 
 /**
@@ -57,11 +62,39 @@ export class SidecarStore implements AnnotationStore {
     const file = (await this.fs.exists(path))
       ? mergeAnnotations(base, annotations, parseAnnotations(await this.fs.readFile(path)))
       : annotations;
-    await this.fs.createDir(path.slice(0, Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"))));
+    await this.fs.createDir(folderOf(path));
     const temp = `${path}.tmp`;
     await this.fs.writeFile(temp, serializeAnnotations(file));
     await this.fs.rename(temp, path);
     return { location: "sidecar", file };
+  }
+
+  /**
+   * Watches the .mdgloss folder, not the sidecar itself: saves replace the
+   * file by renaming, which a watcher on the file would lose. A folder that
+   * doesn't exist yet isn't watched; watch again after the first save.
+   */
+  watch(markdownPath: string, onChange: () => void): Unsubscribe {
+    const path = this.pathFor(markdownPath);
+    const normalized = path.replace(/\\/g, "/");
+    let stopped = false;
+    let unwatch: Unsubscribe | undefined;
+    this.allow(markdownPath)
+      .then(() => this.fs.exists(folderOf(path)))
+      .then((exists) => {
+        if (stopped || !exists) return;
+        unwatch = this.fs.watch(folderOf(path), (event) => {
+          // A removed sidecar isn't taken as deleting every highlight (see save).
+          if (event.kind !== "removed" && event.path.replace(/\\/g, "/") === normalized) {
+            onChange();
+          }
+        });
+      })
+      .catch((e: unknown) => console.error(`Could not watch the sidecar of ${markdownPath}`, e));
+    return () => {
+      stopped = true;
+      unwatch?.();
+    };
   }
 
   /** sidecarPath uses "/", which Windows accepts too; keep the folder's own style. */
@@ -96,6 +129,11 @@ export class AppDataStore implements AnnotationStore {
     const path = joinPath(dir, await fileNameFor(markdownPath));
     await this.fs.writeFile(path, serializeAnnotations({ ...annotations, path: markdownPath }));
     return { location: "app", file: annotations };
+  }
+
+  /** Only this app writes app storage, so there is nothing to watch for. */
+  watch(): Unsubscribe {
+    return () => {};
   }
 
   private async pathFor(markdownPath: string): Promise<string> {
@@ -165,6 +203,15 @@ export class LocalAnnotationStore implements AnnotationStore {
     }
     return saved;
   }
+
+  /** The sidecar is the copy that other devices and windows change. */
+  watch(markdownPath: string, onChange: () => void): Unsubscribe {
+    return this.sidecar.watch(markdownPath, onChange);
+  }
+}
+
+function folderOf(path: string): string {
+  return path.slice(0, Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")));
 }
 
 async function fileNameFor(markdownPath: string): Promise<string> {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FileSystem } from "../fs/types";
+import type { ChangeEvent, FileSystem } from "../fs/types";
 import { emptyAnnotations } from "./format";
 import { createHighlight } from "./highlights";
 import { AppDataStore, LocalAnnotationStore, SidecarStore } from "./store";
@@ -28,11 +28,25 @@ function memoryFileSystem() {
       dirs.add(path);
     },
     listDir: async () => [],
-    watch: () => () => {},
+    watch: (path, onChange) => {
+      const watcher = { path, onChange };
+      watchers.add(watcher);
+      return () => watchers.delete(watcher);
+    },
     canWrite: async () => true,
   };
-  return { fs, files, dirs };
+  const watchers = new Set<{ path: string; onChange: (event: ChangeEvent) => void }>();
+  /** Tells the watchers on `path` or a folder above it about a change. */
+  const emit = (event: ChangeEvent) =>
+    [...watchers]
+      .filter((w) => event.path === w.path || /^[\\/]/.test(event.path.slice(w.path.length)))
+      .filter((w) => event.path.startsWith(w.path))
+      .forEach((w) => w.onChange(event));
+  return { fs, files, dirs, watchers, emit };
 }
+
+/** Lets the store's async watch set-up finish. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const selection = { start: 2, end: 9, quote: "process", prefix: "A ", suffix: " is" };
 
@@ -139,6 +153,53 @@ describe("SidecarStore", () => {
     const failing = new SidecarStore({ ...fs, rename: () => Promise.reject(new Error("crash")) });
     await expect(failing.save("/notes/a.md", emptyAnnotations("a.md"), file)).rejects.toThrow();
     expect(files.get("/notes/.mdgloss/a.md.json")).toBe(before);
+  });
+
+  it("reports changes to the sidecar only, from its .mdgloss folder", async () => {
+    const { fs, dirs, watchers, emit } = memoryFileSystem();
+    dirs.add("/notes/.mdgloss");
+    const store = new SidecarStore(fs);
+    let changes = 0;
+    const stop = store.watch("/notes/week1.md", () => changes++);
+    await settle();
+    expect([...watchers].map((w) => w.path)).toEqual(["/notes/.mdgloss"]);
+
+    emit({ path: "/notes/.mdgloss/week1.md.json", kind: "modified" });
+    emit({ path: "/notes/.mdgloss/week1.md.json", kind: "created" });
+    emit({ path: "/notes/.mdgloss/week1.md.json.tmp", kind: "created" });
+    emit({ path: "/notes/.mdgloss/week2.md.json", kind: "modified" });
+    // Removed elsewhere: the highlights on screen stay (see save).
+    emit({ path: "/notes/.mdgloss/week1.md.json", kind: "removed" });
+    expect(changes).toBe(2);
+
+    stop();
+    expect(watchers.size).toBe(0);
+  });
+
+  it("matches Windows paths whatever the separator", async () => {
+    const { fs, dirs, emit } = memoryFileSystem();
+    dirs.add("C:\\notes\\.mdgloss");
+    const store = new SidecarStore(fs);
+    let changes = 0;
+    store.watch("C:\\notes\\week1.md", () => changes++);
+    await settle();
+    emit({ path: "C:\\notes\\.mdgloss\\week1.md.json", kind: "modified" });
+    expect(changes).toBe(1);
+  });
+
+  it("doesn't watch a .mdgloss folder that doesn't exist yet", async () => {
+    const { fs, watchers } = memoryFileSystem();
+    new SidecarStore(fs).watch("/notes/week1.md", () => {});
+    await settle();
+    expect(watchers.size).toBe(0);
+  });
+
+  it("doesn't start watching after an early unsubscribe", async () => {
+    const { fs, dirs, watchers } = memoryFileSystem();
+    dirs.add("/notes/.mdgloss");
+    new SidecarStore(fs).watch("/notes/week1.md", () => {})();
+    await settle();
+    expect(watchers.size).toBe(0);
   });
 });
 
