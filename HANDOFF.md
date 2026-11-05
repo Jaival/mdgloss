@@ -6,10 +6,10 @@ Sprint 2026-11-09 (spec week 6): live reload. Branch `sprint-6`; each step is it
 
 Merge in this order, each into `sprint-6`. Head branches are deleted on merge, so GitHub retargets the next PR to `sprint-6`. Merge a PR only after its base PR has merged.
 
-1. **Exact re-anchoring** (`feat/exact-reanchoring`): [`findQuote`](src/annotations/anchor.ts), steps 1 and 2 of the spec. `placeHighlights` now returns `{ placed, orphaned }`. 15 tests on edited fixtures in `anchor.test.ts`. Nothing is written back to the sidecar.
-2. **Orphaned list** (`feat/orphaned-list`): a collapsed "Text not found" section at the bottom of the notes panel, `Unlink` icon, muted cards, menu with Delete only.
-3. **Document and tree reload** (`feat/document-reload`): the open file re-renders in place when it changes on disk; a folder workspace reloads its tree on files created, removed or renamed. Renames from the native watcher now map to removed + created.
-4. **Sidecar reload** (`feat/sidecar-reload`): `AnnotationStore.watch`; `SidecarStore` watches the `.mdgloss` folder; `useAnnotations` reloads behind the save queue.
+1. [#53](https://github.com/Jaival/mdgloss/pull/53) **Exact re-anchoring**: [`findQuote`](src/annotations/anchor.ts), steps 1 and 2 of the spec. `placeHighlights` now returns `{ placed, orphaned }`. 15 tests on edited fixtures in `anchor.test.ts`. Nothing is written back to the sidecar.
+2. [#54](https://github.com/Jaival/mdgloss/pull/54) **Orphaned list**: a collapsed "Text not found" section at the bottom of the notes panel, `Unlink` icon, muted cards, menu with Delete only.
+3. [#55](https://github.com/Jaival/mdgloss/pull/55) **Document and tree reload**: the open file re-renders in place when it changes on disk; a folder workspace reloads its tree on files created, removed or renamed. Renames from the native watcher now map to removed + created.
+4. [#56](https://github.com/Jaival/mdgloss/pull/56) **Sidecar reload**: `AnnotationStore.watch`; `SidecarStore` watches the `.mdgloss` folder; `useAnnotations` reloads behind the save queue.
 
 All four pass format, lint, typecheck, tests (164), build and the Rust checks locally. None touch Rust.
 
