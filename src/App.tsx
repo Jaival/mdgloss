@@ -107,14 +107,13 @@ function App() {
 
   const editing = toolbar ?? commenting;
   const activeId = editing?.type === "highlight" ? editing.id : null;
+  const placement = useMemo(
+    () => placeHighlights(doc?.content ?? "", doc ? annotations.highlights : []),
+    [doc, annotations.highlights],
+  );
   const placed = useMemo(
-    () =>
-      doc
-        ? placeHighlights(doc.content, annotations.highlights).map((h) =>
-            h.id === activeId ? { ...h, active: true } : h,
-          )
-        : [],
-    [doc, annotations.highlights, activeId],
+    () => placement.placed.map((h) => (h.id === activeId ? { ...h, active: true } : h)),
+    [placement, activeId],
   );
   // The panel lists what the reader shows, in document order.
   const listed = useMemo(() => {

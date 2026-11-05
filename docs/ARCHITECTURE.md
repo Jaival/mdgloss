@@ -190,7 +190,7 @@ The full data model is in [SPEC.md](SPEC.md#data-model). Week 4 builds highlight
 1. Selecting text in the reader and releasing the mouse maps the range with `toSourceSelection` and opens the floating toolbar ([`HighlightToolbar.tsx`](../src/annotations/HighlightToolbar.tsx)) above it. Picking a colour (click, or `1`–`4`) saves a highlight with the quote, 32 characters of prefix and suffix, and the start offset.
 2. Clicking a highlight opens the toolbar for it: change colour, or delete (`Del`). `Esc` closes it, and so does scrolling, because the toolbar is fixed to the window.
 3. The toolbar's comment button (or `C`) swaps it for the comment popover ([`CommentPopover.tsx`](../src/annotations/CommentPopover.tsx)), a shadcn `Popover` anchored to the `<mark>` or the selection's `Range`, so it follows its text while the reader scrolls. The draft stays in the popover: `Ctrl/Cmd+Enter`, a click outside or moving focus away saves it once, `Esc` drops it, and an empty comment is saved as `null`. A comment on a new selection creates a yellow highlight with it in one save; a discarded one creates nothing. The toolbar ignores keys typed into a text field.
-4. `placeHighlights` places a highlight only if its quote is still at its offset. Anything else stays in the file, unshown, until re-anchoring (week 6).
+4. `placeHighlights` finds each highlight in the current source by exact re-anchoring (see [Re-anchoring](#re-anchoring-weeks-6-and-11)). A highlight it can't place is orphaned: not shown in the reader, kept in the file unchanged.
 5. [`applyHighlights`](../src/markdown/highlights.ts) copies the rendered HAST and, for each element with `data-text-*`, aligns its text to the source with `alignText` (the same alignment selection mapping uses) and wraps highlighted characters in `<mark class="highlight highlight-<color>" data-highlight="<id>">`. A highlight across a bold word, list items, paragraphs, table cells or a code block becomes one mark per piece of text, so the HTML stays valid. Overlaps: the later highlight wins. The first mark of a highlight with a comment gets `data-comment`, and CSS draws a `MessageSquare` marker for it in the right margin, on the line where the highlight starts.
 
 The marks are part of the React tree, not DOM edits after rendering, so React never fights over them, and the `data-text-*` attributes stay on their elements, so selections inside highlighted text still map. The pipeline result is memoized on the source and `applyHighlights` separately on the highlights, so changing a colour doesn't re-parse the document.
@@ -199,10 +199,12 @@ The marks are part of the React tree, not DOM edits after rendering, so React ne
 
 Runs when a file opens and whenever it changes:
 
-1. Look for `prefix + quote + suffix` near the stored offset.
-2. Search the whole file for the quote. Use prefix and suffix to choose between repeats.
+1. Look for `prefix + quote + suffix` within 1,000 characters of the stored offset; the nearest one wins.
+2. Search the whole file for the quote. A single match is taken. Between repeats, the one whose surroundings share the most characters with the prefix (from its end) and the suffix (from its start) wins, and the nearest breaks a tie. Repeats with no shared context at all aren't guessed between.
 3. _(Week 11)_ Fuzzy match with diff-match-patch. Above the threshold (about 0.8 to start), the highlight is placed with status `approximate` until the user confirms it.
 4. Otherwise `orphaned`, listed at the bottom of the sidebar for re-attaching or deleting.
+
+Steps 1 and 2 are [`findQuote`](../src/annotations/anchor.ts), tested against edited fixtures in `anchor.test.ts`. The result is computed on every render and not written back: the sidecar keeps the offset and `status` the highlight was saved with, so re-anchoring never writes a file on its own.
 
 In edit mode (planned, could-have), highlights are re-anchored when the file is saved.
 
