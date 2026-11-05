@@ -47,7 +47,7 @@ import { AppDataStore, LocalAnnotationStore, SidecarStore } from "./annotations/
 import type { HighlightColor } from "./annotations/types";
 import { useAnnotations } from "./annotations/useAnnotations";
 import { FileTree } from "./files/FileTree";
-import { loadMarkdownTree, type TreeNode } from "./files/tree";
+import { affectsTree, loadMarkdownTree, type TreeNode } from "./files/tree";
 import { baseName, joinPath } from "./fs/path";
 import { TauriFileSystem } from "./fs/tauri";
 import { classifyLink, resolveImage } from "./markdown/links";
@@ -68,6 +68,8 @@ const annotationStore = new LocalAnnotationStore(
 interface Workspace {
   /** Folder name, or the file name when a single file is open. */
   title: string;
+  /** The opened folder; null when a single file is open. */
+  root: string | null;
   tree: TreeNode[];
 }
 
@@ -89,6 +91,33 @@ function decodeEmbed(src: string): string {
     return decodeURIComponent(src);
   } catch {
     return src;
+  }
+}
+
+/**
+ * Opening a single file only lets the asset protocol load that file, so grant the
+ * images it links to before rendering, and find the files behind its Obsidian
+ * embeds. A failure only costs images, not the document.
+ */
+async function allowImages(docPath: string, content: string): Promise<Map<string, string>> {
+  const { paths, embeds } = imageSources(content);
+  const images = paths
+    .map((src) => resolveImage(docPath, src))
+    .filter((image) => image.type === "file")
+    .map((image) => image.url);
+  if (images.length === 0 && embeds.length === 0) return new Map();
+  try {
+    const found = await invoke<(string | null)[]>("allow_document_images", {
+      document: docPath,
+      images,
+      embeds: embeds.map(decodeEmbed),
+    });
+    return new Map(
+      embeds.flatMap((src, i) => (found[i] ? [[src, found[i]] as [string, string]] : [])),
+    );
+  } catch (e) {
+    console.error(`Could not allow images for ${docPath}`, e);
+    return new Map();
   }
 }
 
@@ -128,6 +157,46 @@ function App() {
     readerRef.current?.scrollTo(0, 0);
   }, [doc?.path]);
 
+  // Live reload: show the open file again when it changes on disk. The reader
+  // keeps its scroll position and highlights are re-anchored on the new text.
+  const docPath = doc?.path;
+  useEffect(() => {
+    if (!docPath) return;
+    return fs.watch(docPath, async (event) => {
+      // Editors that save by replacing the file remove it, then create it again.
+      if (event.kind === "removed") return;
+      let content: string;
+      try {
+        content = await fs.readFile(docPath);
+      } catch (e) {
+        // Mid-save or gone: keep showing the last version.
+        console.warn(`Could not reload ${docPath}`, e);
+        return;
+      }
+      const embeds = await allowImages(docPath, content);
+      setDoc((shown) =>
+        shown?.path === docPath && shown.content !== content
+          ? { path: docPath, content, embeds }
+          : shown,
+      );
+      // A selection's offsets belong to the old text.
+      setToolbar((target) => (target?.type === "selection" ? null : target));
+    });
+  }, [docPath]);
+
+  // Files added, removed or renamed in the open folder update the tree.
+  const root = workspace?.root;
+  useEffect(() => {
+    if (!root) return;
+    return fs.watch(root, (event) => {
+      if (event.kind === "modified" || !affectsTree(root, event.path)) return;
+      loadMarkdownTree(fs, root).then(
+        (tree) => setWorkspace((shown) => (shown?.root === root ? { ...shown, tree } : shown)),
+        (e: unknown) => console.error(`Could not reload the tree for ${root}`, e),
+      );
+    });
+  }, [root]);
+
   async function run(action: () => Promise<void>) {
     setError(null);
     try {
@@ -143,33 +212,6 @@ function App() {
     setToolbar(null);
   }
 
-  /**
-   * Opening a single file only lets the asset protocol load that file, so grant the
-   * images it links to before rendering, and find the files behind its Obsidian
-   * embeds. A failure only costs images, not the document.
-   */
-  async function allowImages(docPath: string, content: string): Promise<Map<string, string>> {
-    const { paths, embeds } = imageSources(content);
-    const images = paths
-      .map((src) => resolveImage(docPath, src))
-      .filter((image) => image.type === "file")
-      .map((image) => image.url);
-    if (images.length === 0 && embeds.length === 0) return new Map();
-    try {
-      const found = await invoke<(string | null)[]>("allow_document_images", {
-        document: docPath,
-        images,
-        embeds: embeds.map(decodeEmbed),
-      });
-      return new Map(
-        embeds.flatMap((src, i) => (found[i] ? [[src, found[i]] as [string, string]] : [])),
-      );
-    } catch (e) {
-      console.error(`Could not allow images for ${docPath}`, e);
-      return new Map();
-    }
-  }
-
   const openFile = () =>
     run(async () => {
       const path = await open({
@@ -180,6 +222,7 @@ function App() {
       if (path === null) return;
       setWorkspace({
         title: baseName(path),
+        root: null,
         tree: [{ kind: "file", name: baseName(path), path }],
       });
       await showFile(path);
@@ -192,6 +235,7 @@ function App() {
       if (path === null) return;
       setWorkspace({
         title: baseName(path),
+        root: path,
         tree: await loadMarkdownTree(fs, path),
       });
       setDoc(null);

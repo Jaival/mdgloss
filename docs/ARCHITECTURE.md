@@ -81,6 +81,13 @@ interface FileSystem {
 | `BrowserFileSystem` | Planned (Mar) | File System Access API (Chrome, Edge)                                                                                        |
 | `DemoFileSystem`    | Planned (Jan) | In-memory sample documents for the web demo                                                                                  |
 
+### Live reload
+
+`App.tsx` watches two things through `FileSystem.watch`:
+
+- **The open file.** On any change except a removal it re-reads the file, grants its images again and swaps the content in place. The reader keeps its scroll position, highlights are re-anchored on the new text, and an open toolbar for a selection closes because its offsets belong to the old text. A removal is ignored: editors that save by replacing the file remove it and create it again, and a file that is really gone keeps showing its last version.
+- **The opened folder** (not for a single file). A file or folder created, removed or renamed reloads the tree, unless it sits in a folder the tree skips ([`affectsTree`](../src/files/tree.ts)), so sidecar writes in `.mdgloss` don't. `toChangeEvents` reports a rename as the old path removed and the new one created.
+
 Paths are absolute strings. [`src/fs/path.ts`](../src/fs/path.ts) handles both `/` and `\`, so the same helpers work on Windows.
 
 The file tree ([`src/files/tree.ts`](../src/files/tree.ts)) lists `.md` and `.markdown` files recursively, hides dot-folders (`.git`, `.mdgloss`) and `node_modules`, drops folders with no markdown inside, and sorts folders first with natural order (`week2` before `week10`).
@@ -232,5 +239,5 @@ In edit mode (planned, could-have), highlights are re-anchored when the file is 
 - **Large documents re-render whole.** The pipeline runs on every source change. Fine for course notes; revisit if live reload (week 6) feels slow on big files.
 - **Highlights aren't reachable by keyboard yet.** They open by click. The sidebar list in week 5 gives keyboard access.
 - **No reload while open.** A sidecar changed on disk is merged at the next save, not shown straight away. Reloading on change comes with file watching (week 6).
-- **Not built yet:** the browser and demo adapters, file watching in the UI, edit mode, export.
+- **Not built yet:** the browser and demo adapters, edit mode, export.
 - **Linux** isn't a release target for version 1, though CI compiles and tests the Rust code on Linux.
