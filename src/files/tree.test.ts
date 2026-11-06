@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Entry, FileSystem } from "../fs/types";
-import { loadMarkdownTree, type TreeNode } from "./tree";
+import { affectsTree, loadMarkdownTree, type TreeNode } from "./tree";
 
 /** In-memory FileSystem built from a list of file paths. Only listDir is needed here. */
 function fakeFileSystem(files: string[]): FileSystem {
@@ -70,5 +70,20 @@ describe("loadMarkdownTree", () => {
     const fs = fakeFileSystem(["/n/os/week1.md"]);
     const [folder] = await loadMarkdownTree(fs, "/n");
     expect(folder).toMatchObject({ path: "/n/os", children: [{ path: "/n/os/week1.md" }] });
+  });
+});
+
+describe("affectsTree", () => {
+  it("is true for files and folders the tree could show", () => {
+    expect(affectsTree("/notes", "/notes/week1.md")).toBe(true);
+    expect(affectsTree("/notes", "/notes/os/week2.md")).toBe(true);
+    expect(affectsTree("C:\\notes", "C:\\notes\\os")).toBe(true);
+  });
+
+  it("is false inside skipped folders and outside the root", () => {
+    expect(affectsTree("/notes", "/notes/.mdgloss/week1.md.json.tmp")).toBe(false);
+    expect(affectsTree("C:\\notes", "C:\\notes\\.git\\index")).toBe(false);
+    expect(affectsTree("/notes", "/notes/node_modules/a/README.md")).toBe(false);
+    expect(affectsTree("/notes", "/notes-old/week1.md")).toBe(false);
   });
 });

@@ -1,34 +1,43 @@
 # Handoff
 
-Sprint 2026-11-02 (spec week 5): comments and sidebar. Branch `sprint-5`; each step is its own PR, stacked: #42 targets `sprint-5` and each later PR targets the one before it, and `sprint-5` merges into `main` when the week is done.
+Sprint 2026-11-09 (spec week 6): live reload. Branch `sprint-6`; each step is its own PR, stacked: the first targets `sprint-6` and each later PR targets the one before it, and `sprint-6` merges into `main` when the week is done. Started early, on 5 November.
 
-## Done (PRs open, 31 Oct)
+## Done (merged into `sprint-6`, 6 Nov)
 
-Merge in this order, each into `sprint-5`. Head branches are deleted on merge, so GitHub retargets the next PR to `sprint-5`. Merge a PR only after its base PR has merged; otherwise it lands in the feature branch (as #10 did).
+All four PRs are merged into `sprint-6`. Version 0.0.6 is set; `sprint-6` goes into `main` in one PR.
 
-1. [#42](https://github.com/Jaival/mdgloss/pull/42) **Per-field merge** in [`merge.ts`](src/annotations/merge.ts). Spike finding 1: a comment in one window and a colour change in another on the same highlight now both survive. Same-field conflicts still go to the later `updated`.
-2. [#43](https://github.com/Jaival/mdgloss/pull/43) **Toolbar ignores keys typed in a text field** ([`keys.ts`](src/lib/keys.ts)). Spike finding 2.
-3. [#44](https://github.com/Jaival/mdgloss/pull/44) **Comment popover** ([`CommentPopover.tsx`](src/annotations/CommentPopover.tsx)). Toolbar button or `C`. Anchored to the `<mark>` or the selection `Range`, so it follows the text on scroll. Saves once on `Ctrl/Cmd+Enter`, click outside or blur; `Esc` discards. A comment on a new selection creates a yellow highlight in one save.
-4. [#45](https://github.com/Jaival/mdgloss/pull/45) **Margin marker** for commented highlights: `data-comment` on the first mark, a CSS `MessageSquare` in the right margin.
-5. [#46](https://github.com/Jaival/mdgloss/pull/46) **Notes panel**: [`NotesPanel.tsx`](src/annotations/NotesPanel.tsx), toggled from the header. Cards in document order; click scrolls and pulses; menu edits the comment or deletes.
+1. [#53](https://github.com/Jaival/mdgloss/pull/53) **Exact re-anchoring**: [`findQuote`](src/annotations/anchor.ts), steps 1 and 2 of the spec. `placeHighlights` now returns `{ placed, orphaned }`. 15 tests on edited fixtures in `anchor.test.ts`. Nothing is written back to the sidecar.
+2. [#54](https://github.com/Jaival/mdgloss/pull/54) **Orphaned list**: a collapsed "Text not found" section at the bottom of the notes panel, `Unlink` icon, muted cards, menu with Delete only.
+3. [#55](https://github.com/Jaival/mdgloss/pull/55) **Document and tree reload**: the open file re-renders in place when it changes on disk; a folder workspace reloads its tree on files created, removed or renamed. Renames from the native watcher now map to removed + created.
+4. [#56](https://github.com/Jaival/mdgloss/pull/56) **Sidecar reload**: `AnnotationStore.watch`; `SidecarStore` watches the `.mdgloss` folder; `useAnnotations` reloads behind the save queue.
 
-All five pass format, lint, typecheck, tests (141) and build locally. None touch Rust.
+All four pass format, lint, typecheck, tests (164), build and the Rust checks locally. None touch Rust.
 
 ## Not checked in the app
 
-There are no component tests and the reader needs Tauri to open a file, so every UI step above is unchecked by hand. Run `bun tauri dev` on `docs/release-check/` and go through the checks listed in #44, #45 and #46 before merging `sprint-5` into `main`.
+No component tests, and file watching needs Tauri, so every step is unchecked by hand. Run `bun tauri dev` and check before merging `sprint-6` into `main`:
+
+- Open a highlighted file, add a paragraph above a highlight in another editor and save: the highlight follows, scroll stays.
+- Edit a highlighted quote: it moves to "Text not found" in the notes panel. Undo the edit: it comes back.
+- Save from an editor that replaces the file (vim, some IDEs): the reader still reloads.
+- In a folder workspace, create, rename and delete a `.md` file: the tree follows. Highlighting (sidecar writes) does not reload the tree.
+- Open the same file in two windows (or edit the sidecar by hand): a highlight added in one shows in the other without a save.
+- A file with no `.mdgloss` folder yet: after the first highlight, sidecar changes from elsewhere still show.
 
 ## Next (sprint order)
 
-1. Done 31 Oct: #44, #45 and #46 checked in `bun tauri dev`; all five PRs merged into `sprint-5`.
-2. P1 (you) Run the release checklist on a Mac (week 5 "done when"): single file and folder, `.mdgloss` grant, selections across formatting. Record the Gatekeeper text and whether the universal build opens on Apple Silicon, then fix `.github/release-header.md`.
-3. Still open from week 4: first dogfooding session on Windows. The trademark check found no conflicts (31 Oct).
-4. Done 31 Oct: `sprint-5` merged into `main`, week 5 row updated, v0.0.5 tagged.
+1. Hand-check the list above before merging `sprint-6` into `main`.
+2. Still open from week 5: release checklist on a Mac; Gatekeeper text in `.github/release-header.md`.
+3. Still open from week 4: first dogfooding session on Windows.
+4. Merge `sprint-6` into `main`, tag v0.0.6.
+5. Week 7: Tauri updater, remember last opened folder.
 
 ## Open decisions and checks
 
-- **Left out of the notes panel, from DESIGN.md:** opening it on the first annotation (it opens only from the header button), and the `Sheet` below ~900px window width. Both are small; decide after daily use.
-- **The card quote is the raw source text**, so `**bold**` shows its asterisks. Showing the rendered text needs the marks' DOM text or a markdown-to-text pass. Decide after daily use.
-- **Popover focus after "Edit comment" in the card menu.** The menu is told not to take focus back so the popover keeps it. If the popover closes straight away in the app, this is why.
-- No shortcut for the notes panel yet. Keyboard shortcuts are week 8.
-- From week 4, still open: macOS Gatekeeper text, the tooltip when a sidecar can't be read, a sidecar changed on disk shows only after the next save (file watching is week 6).
+- **Re-anchored offsets aren't saved.** Placement runs on every render and the sidecar keeps the saved `offset` and `status`. Saving them would make step 1 faster after big edits and let other tools see `orphaned`, but every reload would then write a file. Revisit with fuzzy matching (week 11), which needs `approximate` stored.
+- **Re-attaching an orphaned highlight** to new text (spec step 4) isn't built. The menu only deletes.
+- **Orphans are easy to miss.** The notes panel is closed by default and the section is collapsed. Consider a count on the notes button.
+- **The comment popover stays open across a reload.** Its anchor may be replaced, so it can drift. A comment typed on a new selection keeps the old offsets; re-anchoring finds the quote on the next render if it is still there.
+- **A sidecar created elsewhere** (no `.mdgloss` folder when the file opened, and this app never saved) isn't picked up until the file is opened again.
+- **The open file deleted on disk** keeps showing its last version with no notice.
+- Carried over: card quote shows raw markdown; notes panel `Sheet` below ~900px; popover focus after "Edit comment"; no notes shortcut (week 8); macOS Gatekeeper text; tooltip for an unreadable sidecar.
