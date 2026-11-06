@@ -110,11 +110,11 @@ GITHUB_REF_NAME=v0.0.2 bash -c "$(sed -n '/- run: |/,/done/p' .github/workflows/
 | Secret                                      | Used by          | Status     |
 | ------------------------------------------- | ---------------- | ---------- |
 | `GITHUB_TOKEN`                              | release workflow | Built in   |
-| `TAURI_SIGNING_PRIVATE_KEY` and `_PASSWORD` | updater signing  | Week 7     |
+| `TAURI_SIGNING_PRIVATE_KEY` and `_PASSWORD` | updater signing  | Needed     |
 | Apple certificate, notarization credentials | macOS signing    | March 2027 |
 | Windows signing credentials                 | Windows signing  | March 2027 |
 
-The repository has no secrets yet. Add them under **Settings → Secrets and variables → Actions**, or with `gh secret set NAME < file`. Never commit keys. Keep a backup of each in a password manager.
+Only the updater secrets are needed today; a release fails without them (setup in [RELEASING.md](RELEASING.md#auto-update)). Add them under **Settings → Secrets and variables → Actions**, or with `gh secret set NAME < file`. Never commit keys. Keep a backup of each in a password manager.
 
 ## Repository settings
 
@@ -124,4 +124,4 @@ The repository has no secrets yet. Add them under **Settings → Secrets and var
 
 ## Privacy constraints
 
-The spec promises no account, no server and no analytics. Don't add telemetry, crash reporting or error-tracking services to the app or the build. The only usage signal will be the download count of the updater manifest on GitHub Releases. When the updater ships (week 7), the README has to say so.
+The spec promises no account, no server and no analytics. Don't add telemetry, crash reporting or error-tracking services to the app or the build. The only usage signal is the download count of the updater manifest on GitHub Releases, and the README says so.

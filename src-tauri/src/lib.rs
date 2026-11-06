@@ -149,6 +149,9 @@ pub fn run() {
         // Paths the user picks in a dialog are added to the fs scope for this session.
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        // Checks GitHub Releases for a signed update (see src/updates.ts).
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             allow_document_images,
             allow_sidecar

@@ -3,7 +3,16 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { appDataDir } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
-import { FileText, FolderOpen, HardDrive, Monitor, Moon, PanelRight, Sun } from "lucide-react";
+import {
+  Download,
+  FileText,
+  FolderOpen,
+  HardDrive,
+  Monitor,
+  Moon,
+  PanelRight,
+  Sun,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -38,7 +47,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import { CommentPopover, type Anchor } from "./annotations/CommentPopover";
 import { createHighlight, placeHighlights } from "./annotations/highlights";
 import { HighlightToolbar } from "./annotations/HighlightToolbar";
@@ -55,6 +63,7 @@ import { Markdown } from "./markdown/Markdown";
 import { imageSources } from "./markdown/pipeline";
 import { toSourceSelection, type SourceSelection } from "./selection/sourceSelection";
 import { isThemeSetting, useTheme } from "./theme";
+import { useUpdate } from "./updates";
 import "./markdown/markdown.css";
 
 const fs = new TauriFileSystem();
@@ -126,6 +135,7 @@ function App() {
   const [doc, setDoc] = useState<OpenDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
+  const appUpdate = useUpdate();
   const readerRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLElement>(null);
   const [toolbar, setToolbar] = useState<Target | null>(null);
@@ -464,13 +474,24 @@ function App() {
               {headerError}
             </span>
           )}
+          <span className="ml-auto" />
+          {appUpdate.ready && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => run(appUpdate.install)}
+            >
+              <Download data-icon="inline-start" />
+              Restart to update to {appUpdate.ready.version}
+            </Button>
+          )}
           {doc && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="ml-auto"
                   aria-label="Toggle notes"
                   aria-pressed={notesOpen}
                   onClick={() => setNotesOpen((open) => !open)}
@@ -483,12 +504,7 @@ function App() {
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(!doc && "ml-auto")}
-                aria-label="Theme"
-              >
+              <Button variant="ghost" size="icon" aria-label="Theme">
                 <ThemeIcon />
               </Button>
             </DropdownMenuTrigger>
