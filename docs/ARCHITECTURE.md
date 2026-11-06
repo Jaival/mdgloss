@@ -25,7 +25,7 @@ How mdgloss is put together, as of week 4 (October 2026). [SPEC.md](SPEC.md) say
                │ Tauri plugins (fs, dialog, opener, updater)   │ invoke()
 ┌──────────────▼───────────────────────────────────────────────▼───────────────┐
 │  Rust (src-tauri/src/lib.rs)                                                 │
-│    plugin setup · allow_document_images command · fs and asset scopes        │
+│    plugin setup · scope commands · reopen last folder · fs and asset scopes  │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -53,7 +53,7 @@ src/
   components/ui/       shadcn components, generated. Restyle through tokens, not edits
   index.css            Design tokens (see DESIGN.md)
 src-tauri/
-  src/lib.rs           Plugins, the allow_document_images command, Rust tests
+  src/lib.rs           Plugins, scope commands, last open folder, Rust tests
   capabilities/        What the webview may call
   tauri.conf.json      App config, version, bundling
 scripts/               Repo scripts (set-version.mjs)
@@ -103,6 +103,7 @@ The webview can only reach files the user picked. That's enforced by Tauri, not 
   - it refuses documents the fs scope doesn't already allow
   - it grants only files with an image extension
   - it resolves Obsidian embeds (`![[name.png]]`) the way Obsidian does: next to the document, then anywhere in the vault (the nearest folder above that contains `.obsidian`), shallowest match first. The vault search skips hidden folders and `node_modules`, and stops after 100,000 entries
+- Dialog grants last for the session only. To reopen what was open last time, `remember_open` saves the open folder (or single file) and the file shown in it to `last-open.json` in the app's data folder, but only paths the fs scope already allows. On start, `restore_open` drops paths that are gone from disk and grants the rest the way the dialog does: a folder recursively, a single file on its own, in both scopes. `last-open.json` sits outside the fs scope (which only reaches `$APPDATA/annotations`), so the webview can't write a path into it to be granted on the next start. Nothing is saved until the restore has finished, so the empty start screen doesn't overwrite the saved paths.
 
 ## Rendering pipeline
 

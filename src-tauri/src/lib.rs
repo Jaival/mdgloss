@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_fs::FsExt;
 
@@ -142,6 +143,86 @@ fn allow_sidecar(app: AppHandle, document: PathBuf) -> Result<(), String> {
     scope.allow_directory(&dir, true).map_err(|e| e.to_string())
 }
 
+/// What was open when the app last ran: a folder and the file shown in it, or a
+/// single file opened on its own (folder is None).
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+struct LastOpen {
+    folder: Option<PathBuf>,
+    file: Option<PathBuf>,
+}
+
+impl LastOpen {
+    /// Drops what has been deleted or moved since it was saved.
+    fn still_on_disk(self) -> Self {
+        Self {
+            folder: self.folder.filter(|folder| folder.is_dir()),
+            file: self.file.filter(|file| file.is_file()),
+        }
+    }
+}
+
+/// Kept in the app's data folder, outside the fs scope, so the webview can't write
+/// paths into it that would be granted on the next start.
+fn last_open_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    Ok(dir.join("last-open.json"))
+}
+
+/// Saves what is open so the next start can show it again. Only paths the user has
+/// already opened (allowed in the fs scope) are saved.
+#[tauri::command]
+fn remember_open(
+    app: AppHandle,
+    folder: Option<PathBuf>,
+    file: Option<PathBuf>,
+) -> Result<(), String> {
+    let scope = app.fs_scope();
+    if let Some(path) = folder
+        .iter()
+        .chain(file.iter())
+        .find(|p| !scope.is_allowed(p))
+    {
+        return Err(format!("{} was not opened by the user", path.display()));
+    }
+    let path = last_open_path(&app)?;
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    let json = serde_json::to_vec(&LastOpen { folder, file }).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())
+}
+
+/// Grants what was open last time again and returns it. Dialog grants only last for
+/// the session, so without this the saved paths couldn't be read. The grants are the
+/// ones the open dialog makes: a folder recursively, a file on its own, in both the fs
+/// and the asset protocol scopes.
+#[tauri::command]
+fn restore_open(app: AppHandle) -> Result<LastOpen, String> {
+    let saved = match fs::read(last_open_path(&app)?) {
+        // A missing or unreadable file means nothing to restore.
+        Ok(bytes) => serde_json::from_slice::<LastOpen>(&bytes).unwrap_or_default(),
+        Err(_) => LastOpen::default(),
+    };
+    let open = saved.still_on_disk();
+    let scope = app.fs_scope();
+    let assets = app.asset_protocol_scope();
+    if let Some(folder) = &open.folder {
+        scope
+            .allow_directory(folder, true)
+            .map_err(|e| e.to_string())?;
+        assets
+            .allow_directory(folder, true)
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(file) = &open.file {
+        if !scope.is_allowed(file) {
+            scope.allow_file(file).map_err(|e| e.to_string())?;
+            assets.allow_file(file).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(open)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -154,7 +235,9 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             allow_document_images,
-            allow_sidecar
+            allow_sidecar,
+            remember_open,
+            restore_open
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -183,6 +266,38 @@ mod tests {
         assert!(!is_image(Path::new("/home/me/.ssh/id_rsa")));
         assert!(!is_image(Path::new("/notes/week1.md")));
         assert!(!is_image(Path::new("/notes/png")));
+    }
+
+    #[test]
+    fn restores_only_what_is_still_on_disk() {
+        let dir = std::env::temp_dir().join(format!("mdgloss-last-open-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("week1.md");
+        fs::write(&file, "").unwrap();
+
+        let saved = LastOpen {
+            folder: Some(dir.clone()),
+            file: Some(file.clone()),
+        };
+        let json = serde_json::to_vec(&saved).unwrap();
+        let read: LastOpen = serde_json::from_slice(&json).unwrap();
+        assert_eq!(read.still_on_disk(), saved);
+
+        // The file was deleted, the folder is still there.
+        fs::remove_file(&file).unwrap();
+        let read: LastOpen = serde_json::from_slice(&json).unwrap();
+        assert_eq!(
+            read.still_on_disk(),
+            LastOpen {
+                folder: Some(dir.clone()),
+                file: None
+            }
+        );
+
+        fs::remove_dir_all(&dir).unwrap();
+        let read: LastOpen = serde_json::from_slice(&json).unwrap();
+        assert_eq!(read.still_on_disk(), LastOpen::default());
     }
 
     /// A vault like the user's: the note is two folders deep, images live at the root.
