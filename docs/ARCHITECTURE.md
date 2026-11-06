@@ -81,6 +81,13 @@ interface FileSystem {
 | `BrowserFileSystem` | Planned (Mar) | File System Access API (Chrome, Edge)                                                                                        |
 | `DemoFileSystem`    | Planned (Jan) | In-memory sample documents for the web demo                                                                                  |
 
+### Live reload
+
+`App.tsx` watches two things through `FileSystem.watch`:
+
+- **The open file.** On any change except a removal it re-reads the file, grants its images again and swaps the content in place. The reader keeps its scroll position, highlights are re-anchored on the new text, and an open toolbar for a selection closes because its offsets belong to the old text. A removal is ignored: editors that save by replacing the file remove it and create it again, and a file that is really gone keeps showing its last version.
+- **The opened folder** (not for a single file). A file or folder created, removed or renamed reloads the tree, unless it sits in a folder the tree skips ([`affectsTree`](../src/files/tree.ts)), so sidecar writes in `.mdgloss` don't. `toChangeEvents` reports a rename as the old path removed and the new one created.
+
 Paths are absolute strings. [`src/fs/path.ts`](../src/fs/path.ts) handles both `/` and `\`, so the same helpers work on Windows.
 
 The file tree ([`src/files/tree.ts`](../src/files/tree.ts)) lists `.md` and `.markdown` files recursively, hides dot-folders (`.git`, `.mdgloss`) and `node_modules`, drops folders with no markdown inside, and sorts folders first with natural order (`week2` before `week10`).
@@ -181,6 +188,7 @@ The full data model is in [SPEC.md](SPEC.md#data-model). Week 4 builds highlight
 - **The `.mdgloss` grant.** A picked folder is granted as `folder/**`, but on macOS and Linux `**` doesn't match names starting with a dot. Before each sidecar access, the Rust command `allow_sidecar` grants the document's own `.mdgloss` folder. It refuses documents the fs scope doesn't already allow.
 - **Never lose annotations.** [`format.ts`](../src/annotations/format.ts) refuses a file with broken JSON or a newer `schemaVersion`; the hook then shows the error and doesn't save, so the file is never overwritten. A single highlight it can't read is left out of the UI but written back unchanged. Fields not managed yet (`bookmarks`, `lastRead`, unknown keys) are kept.
 - **Merged on save.** The sidecar can change while the file is open: another device syncs it, a `git pull` updates it, or a second window saves it. Each save re-reads it and merges by highlight id against the file the edit started from ([`merge.ts`](../src/annotations/merge.ts)): additions and edits from both sides are kept, a deletion on either side is kept, and when both sides edited a highlight it is merged per field: a field changed on one side keeps that change, and a field changed on both sides takes the value with the later `updated`. Unmanaged fields come from the copy on disk. The reader then shows the merged highlights. A sidecar that has disappeared counts as unchanged, so removing it elsewhere doesn't delete the highlights. Highlights moving from app storage count as new here, not as deleted on disk.
+- **Reloaded on change.** `AnnotationStore.watch` reports changes to the stored file. `SidecarStore` watches the `.mdgloss` folder, not the sidecar, because saves replace the sidecar by renaming; a folder that doesn't exist yet isn't watched, and `useAnnotations` watches again once its first save has gone through. A change is loaded behind the queued saves, so the app's own writes come back identical and change nothing. The reload is skipped when an edit was made meanwhile (that edit's save merges the copy on disk) or when a failed save's change is only on screen. A removed sidecar isn't reloaded, as in `save`. App storage isn't watched; only this app writes it.
 - **Atomic writes.** The sidecar is written to `<name>.json.tmp` and renamed over the old file (`fs:allow-rename`), so a crash or a sync client never sees half a file. App storage is per device and isn't merged.
 - **Saves are queued** in [`useAnnotations`](../src/annotations/useAnnotations.ts), so they reach the disk in order. A failed save keeps the change on screen and shows the error in the header.
 - The content-hash part of the fallback key (from the spec) isn't built: the hash would let annotations follow a moved file, which nothing uses yet.
@@ -190,7 +198,7 @@ The full data model is in [SPEC.md](SPEC.md#data-model). Week 4 builds highlight
 1. Selecting text in the reader and releasing the mouse maps the range with `toSourceSelection` and opens the floating toolbar ([`HighlightToolbar.tsx`](../src/annotations/HighlightToolbar.tsx)) above it. Picking a colour (click, or `1`–`4`) saves a highlight with the quote, 32 characters of prefix and suffix, and the start offset.
 2. Clicking a highlight opens the toolbar for it: change colour, or delete (`Del`). `Esc` closes it, and so does scrolling, because the toolbar is fixed to the window.
 3. The toolbar's comment button (or `C`) swaps it for the comment popover ([`CommentPopover.tsx`](../src/annotations/CommentPopover.tsx)), a shadcn `Popover` anchored to the `<mark>` or the selection's `Range`, so it follows its text while the reader scrolls. The draft stays in the popover: `Ctrl/Cmd+Enter`, a click outside or moving focus away saves it once, `Esc` drops it, and an empty comment is saved as `null`. A comment on a new selection creates a yellow highlight with it in one save; a discarded one creates nothing. The toolbar ignores keys typed into a text field.
-4. `placeHighlights` places a highlight only if its quote is still at its offset. Anything else stays in the file, unshown, until re-anchoring (week 6).
+4. `placeHighlights` finds each highlight in the current source by exact re-anchoring (see [Re-anchoring](#re-anchoring-weeks-6-and-11)). A highlight it can't place is orphaned: not shown in the reader, kept in the file unchanged.
 5. [`applyHighlights`](../src/markdown/highlights.ts) copies the rendered HAST and, for each element with `data-text-*`, aligns its text to the source with `alignText` (the same alignment selection mapping uses) and wraps highlighted characters in `<mark class="highlight highlight-<color>" data-highlight="<id>">`. A highlight across a bold word, list items, paragraphs, table cells or a code block becomes one mark per piece of text, so the HTML stays valid. Overlaps: the later highlight wins. The first mark of a highlight with a comment gets `data-comment`, and CSS draws a `MessageSquare` marker for it in the right margin, on the line where the highlight starts.
 
 The marks are part of the React tree, not DOM edits after rendering, so React never fights over them, and the `data-text-*` attributes stay on their elements, so selections inside highlighted text still map. The pipeline result is memoized on the source and `applyHighlights` separately on the highlights, so changing a colour doesn't re-parse the document.
@@ -199,17 +207,19 @@ The marks are part of the React tree, not DOM edits after rendering, so React ne
 
 Runs when a file opens and whenever it changes:
 
-1. Look for `prefix + quote + suffix` near the stored offset.
-2. Search the whole file for the quote. Use prefix and suffix to choose between repeats.
+1. Look for `prefix + quote + suffix` within 1,000 characters of the stored offset; the nearest one wins.
+2. Search the whole file for the quote. A single match is taken. Between repeats, the one whose surroundings share the most characters with the prefix (from its end) and the suffix (from its start) wins, and the nearest breaks a tie. Repeats with no shared context at all aren't guessed between.
 3. _(Week 11)_ Fuzzy match with diff-match-patch. Above the threshold (about 0.8 to start), the highlight is placed with status `approximate` until the user confirms it.
 4. Otherwise `orphaned`, listed at the bottom of the sidebar for re-attaching or deleting.
+
+Steps 1 and 2 are [`findQuote`](../src/annotations/anchor.ts), tested against edited fixtures in `anchor.test.ts`. The result is computed on every render and not written back: the sidecar keeps the offset and `status` the highlight was saved with, so re-anchoring never writes a file on its own.
 
 In edit mode (planned, could-have), highlights are re-anchored when the file is saved.
 
 ## UI and design
 
 - The shell is shadcn/ui on Tailwind v4: a collapsible sidebar with the file tree, a toolbar with a notes toggle and a theme menu, and the notes panel on the right. Tokens and type scale come from [DESIGN.md](DESIGN.md).
-- The notes panel ([`NotesPanel.tsx`](../src/annotations/NotesPanel.tsx)) lists the highlights the reader shows, in document order: quote with a border in its colour, comment, date. Clicking a card scrolls to the highlight and pulses it once (no pulse and no smooth scroll with `prefers-reduced-motion`). Each card's menu edits the comment, in the same popover as the reader, or deletes the highlight. It is closed by default.
+- The notes panel ([`NotesPanel.tsx`](../src/annotations/NotesPanel.tsx)) lists the highlights the reader shows, in document order: quote with a border in its colour, comment, date. Clicking a card scrolls to the highlight and pulses it once (no pulse and no smooth scroll with `prefers-reduced-motion`). Each card's menu edits the comment, in the same popover as the reader, or deletes the highlight. Orphaned highlights follow in a collapsed "Text not found" section (`Unlink` icon, muted cards): quote, comment and date, and a menu that only deletes. Re-attaching one to new text is not built yet. The panel is closed by default.
 - The reader's font size is driven by a `--reader-size` CSS variable. Markdown styles are in `src/markdown/markdown.css`.
 - Theme is `system`, `light` or `dark`, saved in `localStorage` under `mdgloss.theme`, applied as a `.dark` class on `<html>`.
 
@@ -229,6 +239,5 @@ In edit mode (planned, could-have), highlights are re-anchored when the file is 
 - **No Content Security Policy.** `tauri.conf.json` has `"csp": null`. Rendering is already safe (raw HTML dropped, no `innerHTML`), but a CSP would be a second line of defence. Set one before the public release. It has to allow the asset protocol for images.
 - **Large documents re-render whole.** The pipeline runs on every source change. Fine for course notes; revisit if live reload (week 6) feels slow on big files.
 - **Highlights aren't reachable by keyboard yet.** They open by click. The sidebar list in week 5 gives keyboard access.
-- **No reload while open.** A sidecar changed on disk is merged at the next save, not shown straight away. Reloading on change comes with file watching (week 6).
-- **Not built yet:** the browser and demo adapters, file watching in the UI, edit mode, export.
+- **Not built yet:** the browser and demo adapters, edit mode, export.
 - **Linux** isn't a release target for version 1, though CI compiles and tests the Rust code on Linux.
