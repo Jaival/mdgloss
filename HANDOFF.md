@@ -2,9 +2,9 @@
 
 Sprint 2026-11-09 (spec week 6): live reload. Branch `sprint-6`; each step is its own PR, stacked: the first targets `sprint-6` and each later PR targets the one before it, and `sprint-6` merges into `main` when the week is done. Started early, on 5 November.
 
-## Done (PRs open, 5 Nov)
+## Done (merged into `sprint-6`, 6 Nov)
 
-Merge in this order, each into `sprint-6`. Head branches are deleted on merge, so GitHub retargets the next PR to `sprint-6`. Merge a PR only after its base PR has merged.
+All four PRs are merged into `sprint-6`. Version 0.0.6 is set; `sprint-6` goes into `main` in one PR.
 
 1. [#53](https://github.com/Jaival/mdgloss/pull/53) **Exact re-anchoring**: [`findQuote`](src/annotations/anchor.ts), steps 1 and 2 of the spec. `placeHighlights` now returns `{ placed, orphaned }`. 15 tests on edited fixtures in `anchor.test.ts`. Nothing is written back to the sidecar.
 2. [#54](https://github.com/Jaival/mdgloss/pull/54) **Orphaned list**: a collapsed "Text not found" section at the bottom of the notes panel, `Unlink` icon, muted cards, menu with Delete only.
@@ -26,10 +26,10 @@ No component tests, and file watching needs Tauri, so every step is unchecked by
 
 ## Next (sprint order)
 
-1. Hand-check the list above, merge the four PRs into `sprint-6`.
+1. Hand-check the list above before merging `sprint-6` into `main`.
 2. Still open from week 5: release checklist on a Mac; Gatekeeper text in `.github/release-header.md`.
 3. Still open from week 4: first dogfooding session on Windows.
-4. Merge `sprint-6` into `main`, update the week 6 row, tag v0.0.6.
+4. Merge `sprint-6` into `main`, tag v0.0.6.
 5. Week 7: Tauri updater, remember last opened folder.
 
 ## Open decisions and checks
