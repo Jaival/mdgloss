@@ -22,7 +22,7 @@ How mdgloss is put together, as of week 4 (October 2026). [SPEC.md](SPEC.md) say
 │    └─ annotations/ highlights, sidecar + fallback store                      │
 │                                                                              │
 └──────────────┬───────────────────────────────────────────────┬───────────────┘
-               │ Tauri plugins (fs, dialog, opener)            │ invoke()
+               │ Tauri plugins (fs, dialog, opener, updater)   │ invoke()
 ┌──────────────▼───────────────────────────────────────────────▼───────────────┐
 │  Rust (src-tauri/src/lib.rs)                                                 │
 │    plugin setup · allow_document_images command · fs and asset scopes        │
@@ -31,7 +31,7 @@ How mdgloss is put together, as of week 4 (October 2026). [SPEC.md](SPEC.md) say
 
 | Layer         | Technology                                                                                  |
 | ------------- | ------------------------------------------------------------------------------------------- |
-| Desktop shell | Tauri 2 with the fs, dialog and opener plugins                                              |
+| Desktop shell | Tauri 2 with the fs, dialog, opener, updater and process plugins                            |
 | UI            | React 19, TypeScript, Vite, Tailwind v4, shadcn/ui components (`src/components/ui/`)        |
 | Markdown      | unified: remark-parse, remark-gfm, remark-rehype, rehype-slug, rehype-highlight             |
 | Tests         | Vitest (happy-dom for DOM tests), `cargo test`                                              |
@@ -44,6 +44,7 @@ src/
   App.tsx              Shell: sidebar, toolbar, open file/folder, link handling
   main.tsx             React entry
   theme.ts             Light/dark/system, saved in localStorage
+  updates.ts           Daily update check, background download, restart to install
   fs/                  FileSystem interface, Tauri adapter, path helpers
   files/               Markdown file tree (loadMarkdownTree, FileTree)
   markdown/            Rendering pipeline, <Markdown>, links, Obsidian embeds
@@ -96,7 +97,7 @@ The file tree ([`src/files/tree.ts`](../src/files/tree.ts)) lists `.md` and `.ma
 
 The webview can only reach files the user picked. That's enforced by Tauri, not by the frontend:
 
-- [`capabilities/default.json`](../src-tauri/capabilities/default.json) allows the open dialog and a short list of fs calls (read/write text, rename, read dir, stat, exists, mkdir, watch). There's no general shell or process access.
+- [`capabilities/default.json`](../src-tauri/capabilities/default.json) allows the open dialog and a short list of fs calls (read/write text, rename, read dir, stat, exists, mkdir, watch). There's no general shell access. The updater may check, download and install signed updates, and the process plugin may only restart the app (`process:allow-restart`).
 - The fs plugin's scope starts empty, apart from `$APPDATA/annotations` (fallback annotation storage). Picking a file in the dialog grants that file. Picking a folder grants it **recursively** (`recursive: true`); without that, subfolders couldn't be listed.
 - Images are loaded through Tauri's asset protocol, which has its own scope, also empty at start. Opening a single file only grants that file, so a document's images wouldn't load. The Rust command `allow_document_images` fixes that:
   - it refuses documents the fs scope doesn't already allow

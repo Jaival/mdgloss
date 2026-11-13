@@ -8,7 +8,7 @@ Pushing a tag that starts with `v` runs [`.github/workflows/release.yml`](../.gi
 
 1. **Check tag matches app version** (Ubuntu, a few seconds). Reads the version from `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`. If any of them differs from the tag, the release stops here.
 2. **Create draft release** (Ubuntu, a few seconds). Creates a **draft release** with GitHub's generated notes: the PRs merged since the previous tag, with dependency bumps in their own section (sections are set in [`.github/release.yml`](../.github/release.yml)). The install warning at the top comes from [`.github/release-header.md`](../.github/release-header.md).
-3. **Build** (macOS and Windows in parallel). [`tauri-action`](https://github.com/tauri-apps/tauri-action) builds the app and uploads the installers to that draft. With a warm Rust cache this takes about 4–5 minutes; with a cold one, about 10.
+3. **Build** (macOS and Windows in parallel). [`tauri-action`](https://github.com/tauri-apps/tauri-action) builds the app and uploads the installers to that draft, plus the signed update bundles and `latest.json` for the [auto-updater](#auto-update). With a warm Rust cache this takes about 4–5 minutes; with a cold one, about 10.
 
 Nobody sees the draft until you publish it.
 
@@ -53,7 +53,7 @@ mdgloss uses [semantic versioning](https://semver.org) with a leading `v` on tag
 | Feature work and beta (Dec–Apr) | `0.x.y`  | `v0.2.0`, `v0.2.1` |
 | Public launch (13 Apr 2027)     | `1.0.0`  | `v1.0.0`           |
 
-Bump the patch number for fixes and weekly builds, and the minor number for a milestone. Every version you tag must be higher than the last one, or the auto-updater (week 7) won't offer it.
+Bump the patch number for fixes and weekly builds, and the minor number for a milestone. Every version you tag must be higher than the last one, or the [auto-updater](#auto-update) won't offer it.
 
 ### The Windows installer's version rules
 
@@ -108,7 +108,7 @@ This field has to be updated by hand for every pre-release, and `version:set` re
 
 5. **Test the installers before publishing.** Download them from the draft (`gh release download v0.0.3 --dir /tmp/mdgloss-0.0.3`) and run the [release checklist](#release-checklist) on Windows, and from week 5 on a Mac too.
 
-6. **Review and publish the draft.** The notes already list the merged PRs. Tidy them if needed, for example by removing the "Release 0.0.3" PR or adding a summary at the top (`gh release view v0.0.3 --web`). Leave **pre-release** unticked and **Set as the latest release** ticked: GitHub never makes a pre-release the latest release, so it wouldn't appear in the repo's Releases box and the updater wouldn't see it. The pre-alpha warning in the notes and the README's pre-release badge say what stage the app is at. Publishing makes the release visible, and once the updater is in (week 7) it also sends the update to installed copies.
+6. **Review and publish the draft.** The notes already list the merged PRs. Tidy them if needed, for example by removing the "Release 0.0.3" PR or adding a summary at the top (`gh release view v0.0.3 --web`). Leave **pre-release** unticked and **Set as the latest release** ticked: GitHub never makes a pre-release the latest release, so it wouldn't appear in the repo's Releases box and the updater wouldn't see it. The pre-alpha warning in the notes and the README's pre-release badge say what stage the app is at. Publishing makes the release visible and offers the update to installed copies, within a day.
 
 7. **Note it in the build log** (`notes/linkedin-log.md`).
 
@@ -131,6 +131,8 @@ Open an issue for anything that fails. A failure under **Install** or **Annotati
 - [ ] The installer file names carry the release's version (`mdgloss_0.0.3_…`).
 - [ ] The OS warning appears and the steps in [`.github/release-header.md`](../.github/release-header.md) get past it. If they don't, write down what did and update the header before publishing.
 - [ ] The app starts, and the OS shows the new version (Windows: **Settings → Apps → Installed apps**; macOS: **Get Info** on the app).
+- [ ] The draft has `latest.json` and a `.sig` file next to each update bundle.
+- [ ] After publishing: a copy of the previous version, started with `mdgloss.lastUpdateCheck` cleared (or a day after its last check), shows **Restart to update**, and the button installs and starts the new version.
 
 **Windows only**
 
@@ -184,6 +186,38 @@ Make each selection by dragging with the mouse, pick a colour, then check the `q
 
   Open `lecture.md` and add a highlight: the header shows the app-storage icon, and a new file appears in app storage. Give write access back, restart, open `lecture.md` and add another highlight: both are now in `.mdgloss/lecture.md.json`, the icon is gone, and the app-storage file says `"movedTo": "sidecar"` with no highlights.
 
+## Auto-update
+
+The app checks `https://github.com/Jaival/mdgloss/releases/latest/download/latest.json` at most once a day (time of the last check in `localStorage`, `mdgloss.lastUpdateCheck`), and dev builds never check. A newer version downloads in the background; a **Restart to update** button in the toolbar installs it. Nothing installs until the user clicks. Code: [`src/updates.ts`](../src/updates.ts).
+
+Update bundles are signed with the updater's own key pair, which is free and separate from OS code signing. The public key is in `tauri.conf.json` (`plugins.updater.pubkey`); the private key and its password are repository secrets that `release.yml` passes to `tauri-action`.
+
+Setup, once:
+
+1. Generate the key pair and set a password:
+
+   ```bash
+   bunx tauri signer generate -w ~/.tauri/mdgloss.key
+   ```
+
+2. Add the secrets:
+
+   ```bash
+   gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/mdgloss.key
+   gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+   ```
+
+3. Put the contents of `~/.tauri/mdgloss.key.pub` in `plugins.updater.pubkey`.
+
+Back up the private key and its password in a password manager, and never commit them. **If you lose the private key, installed copies can never be updated again** and users have to reinstall by hand. A release tag without the secrets fails at the bundle step.
+
+Things to know:
+
+- `releases/latest` skips drafts **and pre-releases**. That's why releases are published as normal releases from v0.0.3 on (v0.0.1 and v0.0.2 stay marked pre-release). Don't tick pre-release on a release the updater should offer.
+- The updater compares versions as semver. It never offers a lower version, so don't go back down after a mistake.
+- Versions before the updater (v0.0.6 and older) can't update themselves. Install the first updater release by hand.
+- On Windows the installer runs in passive mode (a progress bar, no questions) and closes the app itself. On macOS the app replaces itself and restarts.
+
 ## When something goes wrong
 
 **The check job fails ("Tag v0.0.3 but package.json says '0.0.2'").** Nothing was built or uploaded. Delete the tag, fix the version through a PR, and tag again:
@@ -200,29 +234,6 @@ git tag -d v0.0.3                   # local
 **A published release is broken.** Don't move or reuse a tag that's been published: anyone who downloaded it has that version. Release a fixed patch version and mark the bad release as broken in its notes, or delete it if nobody depends on it yet.
 
 ## Coming next
-
-### Auto-update (week 7, 16–22 Nov 2026)
-
-The Tauri updater checks GitHub Releases for a newer version. Its download count is the spec's measure of weekly users. Setup, once:
-
-1. Generate the updater key pair. This key is free and separate from OS code signing.
-
-   ```bash
-   bunx tauri signer generate -w ~/.tauri/mdgloss.key
-   ```
-
-   Keep `~/.tauri/mdgloss.key` and its password out of the repo, and back them up in a password manager. **If you lose the private key, installed copies can never be updated again** and users have to reinstall by hand.
-
-2. Add the private key and its password as repository secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, and pass them to `tauri-action` as `env` in `release.yml`.
-3. In `tauri.conf.json`, set `bundle.createUpdaterArtifacts: true` and add `plugins.updater` with the **public** key and the endpoint `https://github.com/Jaival/mdgloss/releases/latest/download/latest.json`.
-4. Add `tauri-plugin-updater` on the Rust side and `@tauri-apps/plugin-updater` on the frontend, with the `updater:default` permission in `capabilities/default.json`.
-
-`tauri-action` then uploads signed update bundles and a `latest.json` with every release.
-
-Things to know before relying on it:
-
-- `releases/latest` skips drafts **and pre-releases**. That's why releases are published as normal releases from v0.0.3 on (v0.0.1 and v0.0.2 stay marked pre-release). Don't tick pre-release on a release the updater should offer.
-- The updater compares versions as semver. It never offers a lower version, so don't go back down after a mistake.
 
 ### Signing (March 2027)
 

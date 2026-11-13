@@ -63,6 +63,10 @@ More docs:
 - [Releasing](docs/RELEASING.md): how to cut a release and change the version (`bun run version:set`)
 - [Dogfooding log](docs/DOGFOODING.md): daily use, problems found, days per week
 
+## Privacy
+
+mdgloss has no account, no server and no analytics. The only network request it makes is the update check: once a day at most, it downloads `latest.json` from this repository's GitHub Releases. GitHub counts those downloads, and that count is the only usage figure the project sees. Your files and annotations never leave your computer.
+
 ## License
 
 [MIT](LICENSE)
