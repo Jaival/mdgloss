@@ -147,7 +147,9 @@ Open an issue for anything that fails. A failure under **Install** or **Annotati
 
 - [ ] **Open folder** on the copied folder: the tree shows `lecture.md` and `week2/notes.md`, folders first, and no `.mdgloss` folder.
 - [ ] `week2/notes.md` opens and renders (the folder grant reaches subfolders).
-- [ ] Restart the app, then **Open file** on `lecture.md` alone: it renders and its images load.
+- [ ] Restart the app: the folder and `week2/notes.md` open again, and the file renders.
+- [ ] **Open file** on `lecture.md` alone, then restart: only `lecture.md` opens again, it renders and its images load (the grant is for that file only).
+- [ ] Rename the copied folder, then restart: the app starts empty, with no error.
 
 ### Rendering (`lecture.md`)
 

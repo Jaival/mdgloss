@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { appDataDir } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -82,6 +82,12 @@ interface Workspace {
   tree: TreeNode[];
 }
 
+/** What was open when the app last closed (see restore_open in lib.rs). */
+interface LastOpen {
+  folder: string | null;
+  file: string | null;
+}
+
 /** What the floating highlight toolbar or the comment popover is acting on. */
 type Target =
   | { type: "selection"; selection: SourceSelection; anchor: Anchor }
@@ -141,6 +147,8 @@ function App() {
   const [toolbar, setToolbar] = useState<Target | null>(null);
   const [commenting, setCommenting] = useState<Target | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  /** False until the last session's files are shown, so the empty start isn't saved over them. */
+  const [restored, setRestored] = useState(false);
   const annotations = useAnnotations(annotationStore, doc?.path ?? null);
   const { update } = annotations;
 
@@ -222,6 +230,24 @@ function App() {
     setToolbar(null);
   }
 
+  async function showSingleFile(path: string) {
+    setWorkspace({
+      title: baseName(path),
+      root: null,
+      tree: [{ kind: "file", name: baseName(path), path }],
+    });
+    await showFile(path);
+  }
+
+  async function showFolder(path: string) {
+    setWorkspace({
+      title: baseName(path),
+      root: path,
+      tree: await loadMarkdownTree(fs, path),
+    });
+    setDoc(null);
+  }
+
   const openFile = () =>
     run(async () => {
       const path = await open({
@@ -229,27 +255,35 @@ function App() {
         directory: false,
         filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
       });
-      if (path === null) return;
-      setWorkspace({
-        title: baseName(path),
-        root: null,
-        tree: [{ kind: "file", name: baseName(path), path }],
-      });
-      await showFile(path);
+      if (path !== null) await showSingleFile(path);
     });
 
   const openFolder = () =>
     run(async () => {
       // recursive: true grants access to subfolders, not just the picked folder itself.
       const path = await open({ multiple: false, directory: true, recursive: true });
-      if (path === null) return;
-      setWorkspace({
-        title: baseName(path),
-        root: path,
-        tree: await loadMarkdownTree(fs, path),
-      });
-      setDoc(null);
+      if (path !== null) await showFolder(path);
     });
+
+  // Show the folder and file that were open when the app last closed. Paths that
+  // have gone since are dropped in Rust, so a missing folder just starts empty.
+  const showLastOpen = useEffectEvent(async ({ folder, file }: LastOpen) => {
+    if (folder) await showFolder(folder);
+    if (file) await (folder ? showFile(file) : showSingleFile(file));
+  });
+  useEffect(() => {
+    invoke<LastOpen>("restore_open")
+      .then(showLastOpen)
+      .catch((e: unknown) => console.warn("Could not reopen the last folder or file", e))
+      .finally(() => setRestored(true));
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    invoke("remember_open", { folder: root ?? null, file: docPath ?? null }).catch((e: unknown) =>
+      console.warn("Could not remember the open folder or file", e),
+    );
+  }, [restored, root, docPath]);
 
   function imageSrc(doc: OpenDocument, src: string): string {
     const embed = doc.embeds.get(src);
