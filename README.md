@@ -67,6 +67,20 @@ More docs:
 
 mdgloss has no account, no server and no analytics. The only network request it makes is the update check: once a day at most, it downloads `latest.json` from this repository's GitHub Releases. GitHub counts those downloads, and that count is the only usage figure the project sees. Your files and annotations never leave your computer.
 
+## Using mdgloss? I'd like to hear from you
+
+mdgloss is free under the MIT license, for you and for your company. You don't need to ask or tell anyone. But if you use it, on your own or at work, I'd really like to know. It helps me decide what to build next.
+
+[Start a discussion in Show and tell](https://github.com/Jaival/mdgloss/discussions/new?category=show-and-tell) and tell me as much as you like:
+
+- Who you are, and whether you use it alone or as a team or company
+- What you read with it: course notes, docs, specs, research, something else
+- How it fits into your workflow, and which tools you use next to it
+- The features you miss, and what you would drop
+- What annoys you or breaks
+
+A short "we use it for X" is welcome too. Feature ideas can also go in [Ideas](https://github.com/Jaival/mdgloss/discussions/categories/ideas); for bugs, [open an issue](https://github.com/Jaival/mdgloss/issues/new).
+
 ## License
 
 [MIT](LICENSE)
