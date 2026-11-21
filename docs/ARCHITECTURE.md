@@ -1,6 +1,6 @@
 # Architecture
 
-How mdgloss is put together, as of week 4 (October 2026). [SPEC.md](SPEC.md) says what the app should do and when. This file says how the code does it. Parts not built yet are marked _planned_.
+How mdgloss is put together, as of v0.0.8 (November 2026). [SPEC.md](SPEC.md) says what the app should do and when. This file says how the code does it. Parts not built yet are marked _planned_.
 
 ## The rules everything follows
 
@@ -46,7 +46,7 @@ src/
   theme.ts             Light/dark/system, saved in localStorage
   updates.ts           Daily update check, background download, restart to install
   fs/                  FileSystem interface, Tauri adapter, path helpers
-  files/               Markdown file tree (loadMarkdownTree, FileTree)
+  files/               Markdown file tree (loadMarkdownTree, FileTree), open-file reload
   markdown/            Rendering pipeline, <Markdown>, links, Obsidian embeds
   selection/           Selection-to-source mapping (week 3)
   annotations/         Highlight model, file format, stores, toolbar (week 4)
@@ -86,7 +86,7 @@ interface FileSystem {
 
 `App.tsx` watches two things through `FileSystem.watch`:
 
-- **The open file.** On any change except a removal it re-reads the file, grants its images again and swaps the content in place. The reader keeps its scroll position, highlights are re-anchored on the new text, and an open toolbar for a selection closes because its offsets belong to the old text. A removal is ignored: editors that save by replacing the file remove it and create it again, and a file that is really gone keeps showing its last version.
+- **The open file.** On any change it re-reads the file ([`reloadFile`](../src/files/reload.ts)), grants its images again and swaps the content in place. The reader keeps its scroll position, highlights are re-anchored on the new text, and an open toolbar for a selection closes because its offsets belong to the old text. Editors that save by replacing the file remove it and create it again, so a removal only counts when the file is still gone at the re-read. Then the reader keeps the last version, shows a notice, and offers no toolbar for new highlights; existing highlights can still be edited. Opening a file or the file coming back clears the notice. A file that exists but can't be read (mid-save) keeps the last version without a notice.
 - **The opened folder** (not for a single file). A file or folder created, removed or renamed reloads the tree, unless it sits in a folder the tree skips ([`affectsTree`](../src/files/tree.ts)), so sidecar writes in `.mdgloss` don't. `toChangeEvents` reports a rename as the old path removed and the new one created.
 
 Paths are absolute strings. [`src/fs/path.ts`](../src/fs/path.ts) handles both `/` and `\`, so the same helpers work on Windows.
@@ -239,7 +239,7 @@ In edit mode (planned, could-have), highlights are re-anchored when the file is 
 ## Known gaps and decisions
 
 - **No Content Security Policy.** `tauri.conf.json` has `"csp": null`. Rendering is already safe (raw HTML dropped, no `innerHTML`), but a CSP would be a second line of defence. Set one before the public release. It has to allow the asset protocol for images.
-- **Large documents re-render whole.** The pipeline runs on every source change. Fine for course notes; revisit if live reload (week 6) feels slow on big files.
-- **Highlights aren't reachable by keyboard yet.** They open by click. The sidebar list in week 5 gives keyboard access.
+- **Large documents re-render whole.** The pipeline runs on every source change, including each live reload. Fine for course notes; revisit if it feels slow on big files.
+- **Highlights in the reader open by click only.** The notes panel's cards are buttons, so a highlight can be reached by keyboard from there.
 - **Not built yet:** the browser and demo adapters, edit mode, export.
 - **Linux** isn't a release target for version 1, though CI compiles and tests the Rust code on Linux.

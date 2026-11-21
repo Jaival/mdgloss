@@ -66,7 +66,7 @@ The point of this release is the update path: an installed v0.0.7 must offer "Re
 
 ## Next (in order)
 
-1. Hand-check the 0.0.6 list above and last-open (a folder, a single file, a deleted path) on v0.0.7, if not done yet. Hand-check the deleted-file notice (#70) in `bun tauri dev`.
+1. A friend runs the hand checks: the 0.0.6 list above, last-open (a folder, a single file, a deleted path), the deleted-file notice (#70), and the macOS release checklist ([MACOS-TESTING.md](docs/MACOS-TESTING.md)).
 2. Merge the `sprint-8` stack bottom-up, then `sprint-8` → `main`. Tag v0.0.8 on `main`.
 3. Check the v0.0.8 draft: `latest.json` and a `.sig` per update bundle (release checklist in [RELEASING.md](docs/RELEASING.md#release-checklist)). Publish it.
 4. First real update test: an installed v0.0.7 offers "Restart to update" within a day and installs 0.0.8. Repeat on macOS if possible. If the download fails, check the `api.github.com/.../assets/<id>` URLs in `latest.json` first.

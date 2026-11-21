@@ -244,6 +244,5 @@ A smaller check comes first, on Sunday 13 December (end of week 10): did I use t
 
 ## Open decisions
 
-- Domain and EUIPO trademark check for "mdgloss" (week 4).
 - Windows signing route: SignPath Foundation or a paid certificate (week 17).
 - Design and pricing of paid sync. Not needed before launch.

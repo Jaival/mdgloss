@@ -26,8 +26,9 @@ Numbered in the order found. Severity: **blocker** (stopped the session), **anno
 
 ## Missed days
 
-| Date | Reason |
-| ---- | ------ |
+| Date            | Reason                                                                                         |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| 28 Oct – 22 Nov | Not reading many documents in this period, so no sessions. Week 7 of the mini-gate has no use. |
 
 ## Weekly totals
 
