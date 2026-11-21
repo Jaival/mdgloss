@@ -49,7 +49,7 @@ mdgloss uses [semantic versioning](https://semver.org) with a leading `v` on tag
 | Stage                           | Versions | Example tags       |
 | ------------------------------- | -------- | ------------------ |
 | Pre-alpha, weekly builds        | `0.0.x`  | `v0.0.3`, `v0.0.4` |
-| Personal alpha (29 Nov 2026)    | `0.1.0`  | `v0.1.0`           |
+| Personal alpha (13 Dec 2026)    | `0.1.0`  | `v0.1.0`           |
 | Feature work and beta (Dec–Apr) | `0.x.y`  | `v0.2.0`, `v0.2.1` |
 | Public launch (13 Apr 2027)     | `1.0.0`  | `v1.0.0`           |
 

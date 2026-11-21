@@ -1,6 +1,6 @@
 # Dogfooding log
 
-Daily use of mdgloss for real reading, from 27 October 2026. It feeds three things in the [plan](SPEC.md#plan): "fix what daily use found" (week 7), "the 10 most annoying problems" (week 8) and the mini-gate on 13 December (at least 3 days a week in weeks 7 to 10).
+Daily use of mdgloss for real reading, from 27 October 2026. It feeds three things in the [plan](SPEC.md#plan): "fix what daily use found" (week 7), "the 10 most annoying problems" (weeks 8 to 10) and the mini-gate on 13 December (at least 3 days a week in weeks 7 to 10).
 
 The January gate counts annotation days from the sidecars, so this log doesn't need to prove use. It records what the sidecars can't: how long a session took and what got in the way.
 
