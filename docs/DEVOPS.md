@@ -110,11 +110,11 @@ GITHUB_REF_NAME=v0.0.2 bash -c "$(sed -n '/- run: |/,/done/p' .github/workflows/
 | Secret                                      | Used by          | Status     |
 | ------------------------------------------- | ---------------- | ---------- |
 | `GITHUB_TOKEN`                              | release workflow | Built in   |
-| `TAURI_SIGNING_PRIVATE_KEY` and `_PASSWORD` | updater signing  | Needed     |
+| `TAURI_SIGNING_PRIVATE_KEY` and `_PASSWORD` | updater signing  | Set 21 Nov |
 | Apple certificate, notarization credentials | macOS signing    | March 2027 |
 | Windows signing credentials                 | Windows signing  | March 2027 |
 
-Only the updater secrets are needed today; a release fails without them (setup in [RELEASING.md](RELEASING.md#auto-update)). Add them under **Settings → Secrets and variables → Actions**, or with `gh secret set NAME < file`. Never commit keys. Keep a backup of each in a password manager.
+Only the updater secrets are set today; a release fails without them (setup in [RELEASING.md](RELEASING.md#auto-update)). Add them under **Settings → Secrets and variables → Actions**, or with `gh secret set NAME < file` (in PowerShell, which has no `<`: `cmd /c "gh secret set NAME < file"`). Never commit keys. Keep a backup of each in a password manager.
 
 ## Repository settings
 

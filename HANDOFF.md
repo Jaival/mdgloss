@@ -52,7 +52,7 @@ Branches: `sprint-7` (= `sprint-6` head), `feat/updater` on it, `feat/last-open`
 
 Both touch Rust ([`lib.rs`](src-tauri/src/lib.rs)).
 
-**Blocker for the updater:** `plugins.updater.pubkey` in [`tauri.conf.json`](src-tauri/tauri.conf.json) is still `REPLACE_WITH_UPDATER_PUBLIC_KEY`. Generate the key pair and set the two secrets per [RELEASING.md](docs/RELEASING.md#auto-update), then put the public key in the config. Without it, no release can verify an update.
+**Updater key:** set 21 Nov. The public key (ID `F617EB7D3DA3947E`) is in [`tauri.conf.json`](src-tauri/tauri.conf.json); the private key and password are repository secrets. The first signed release has to be installed by hand; updates from it on are automatic.
 
 ## Untracked in the working tree
 
