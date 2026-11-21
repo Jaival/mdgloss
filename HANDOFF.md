@@ -28,14 +28,14 @@ Sprint 5, merged into `sprint-5` then `main`:
 
 After: [#49](https://github.com/Jaival/mdgloss/pull/49) Dependabot skips TypeScript majors until typescript-eslint supports 7.
 
-## 0.0.6: live reload (merged into `sprint-6`, not in `main`)
+## 0.0.6: live reload (done)
 
 1. [#53](https://github.com/Jaival/mdgloss/pull/53) Exact re-anchoring: [`findQuote`](src/annotations/anchor.ts); `placeHighlights` returns `{ placed, orphaned }`.
 2. [#54](https://github.com/Jaival/mdgloss/pull/54) "Text not found" section for orphaned highlights in the notes panel.
 3. [#55](https://github.com/Jaival/mdgloss/pull/55) The open file and the folder tree reload on disk changes.
 4. [#56](https://github.com/Jaival/mdgloss/pull/56) Sidecar reload: `AnnotationStore.watch`, `useAnnotations` reloads behind the save queue.
 
-Checks passed locally (164 tests). Hand checks in `bun tauri dev`, still to do before merging #58:
+Checks passed locally (164 tests). Hand checks, still to do (now on the installed v0.0.7):
 
 - Add a paragraph above a highlight in another editor and save: the highlight follows, scroll stays.
 - Edit a highlighted quote: it moves to "Text not found". Undo: it comes back.
@@ -60,10 +60,9 @@ Checks passed locally (164 tests). Hand checks in `bun tauri dev`, still to do b
 
 The point of this release is the update path: an installed v0.0.7 must offer "Restart to update" and install it. `updates.ts` saves the check time before checking, so a v0.0.7 that already checked today waits up to a day.
 
-## Untracked in the working tree
+## Not scheduled yet
 
-- `CLAUDE.md` (Checks section). Branch `docs/checks-section` holds a committed version; use one, drop the other.
-- [`docs/UI-PLAN.md`](docs/UI-PLAN.md) and [`docs/mockups/`](docs/mockups/): UI direction decided 11 Nov (margin notes, sidebar tabs, palette, focus mode). Not scheduled yet.
+- [`docs/UI-PLAN.md`](docs/UI-PLAN.md) and [`docs/mockups/`](docs/mockups/): UI direction decided 11 Nov (margin notes, sidebar tabs, palette, focus mode).
 
 ## Next (in order)
 
