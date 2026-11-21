@@ -55,6 +55,7 @@ import { AppDataStore, LocalAnnotationStore, SidecarStore } from "./annotations/
 import type { HighlightColor } from "./annotations/types";
 import { useAnnotations } from "./annotations/useAnnotations";
 import { FileTree } from "./files/FileTree";
+import { reloadFile } from "./files/reload";
 import { affectsTree, loadMarkdownTree, type TreeNode } from "./files/tree";
 import { baseName, joinPath } from "./fs/path";
 import { TauriFileSystem } from "./fs/tauri";
@@ -147,6 +148,9 @@ function App() {
   const [toolbar, setToolbar] = useState<Target | null>(null);
   const [commenting, setCommenting] = useState<Target | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  /** The open file's path once it was deleted or moved on disk; its last version stays shown. */
+  const [missingPath, setMissingPath] = useState<string | null>(null);
+  const missing = doc !== null && missingPath === doc.path;
   /** False until the last session's files are shown, so the empty start isn't saved over them. */
   const [restored, setRestored] = useState(false);
   const annotations = useAnnotations(annotationStore, doc?.path ?? null);
@@ -180,17 +184,18 @@ function App() {
   const docPath = doc?.path;
   useEffect(() => {
     if (!docPath) return;
-    return fs.watch(docPath, async (event) => {
-      // Editors that save by replacing the file remove it, then create it again.
-      if (event.kind === "removed") return;
-      let content: string;
-      try {
-        content = await fs.readFile(docPath);
-      } catch (e) {
-        // Mid-save or gone: keep showing the last version.
-        console.warn(`Could not reload ${docPath}`, e);
+    return fs.watch(docPath, async () => {
+      const reload = await reloadFile(fs, docPath);
+      // Keep showing the last version; say so if the file is gone.
+      if (reload.type === "unreadable") return console.warn(`Could not reload ${docPath}`);
+      if (reload.type === "missing") {
+        setMissingPath(docPath);
+        // No new highlights on a file that is gone.
+        setToolbar((target) => (target?.type === "selection" ? null : target));
         return;
       }
+      setMissingPath((path) => (path === docPath ? null : path));
+      const { content } = reload;
       const embeds = await allowImages(docPath, content);
       setDoc((shown) =>
         shown?.path === docPath && shown.content !== content
@@ -227,6 +232,7 @@ function App() {
   async function showFile(path: string) {
     const content = await fs.readFile(path);
     setDoc({ path, content, embeds: await allowImages(path, content) });
+    setMissingPath(null);
     setToolbar(null);
   }
 
@@ -314,7 +320,14 @@ function App() {
   function onReaderMouseUp() {
     const article = articleRef.current;
     const selection = window.getSelection();
-    if (!doc || !article || !annotations.editable || !selection || selection.rangeCount === 0)
+    if (
+      !doc ||
+      !article ||
+      !annotations.editable ||
+      missing ||
+      !selection ||
+      selection.rangeCount === 0
+    )
       return;
     const range = selection.getRangeAt(0);
     if (range.collapsed) return;
@@ -572,6 +585,15 @@ function App() {
             // The toolbar is fixed in the window, so it would drift away from its text.
             onScroll={toolbar ? closeToolbar : undefined}
           >
+            {missing && (
+              <p
+                className="mx-8 mt-4 rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground"
+                role="status"
+              >
+                This file was deleted or moved. You are reading its last version and can&apos;t add
+                highlights.
+              </p>
+            )}
             {doc ? (
               <article
                 className="markdown-body px-8 py-12"

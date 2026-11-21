@@ -74,6 +74,6 @@ Checks passed locally (164 tests). Hand checks in `bun tauri dev`, still to do b
 - **Orphans are easy to miss.** UI plan step 2 (orphan chip) closes this.
 - **Comment popover stays open across a reload** and can drift.
 - **A sidecar created elsewhere** before this app ever saved isn't picked up until the file is reopened.
-- **The open file deleted on disk** keeps showing its last version with no notice.
+- **The open file deleted on disk** keeps its last version with a notice, and new highlights are blocked (0.0.8). Existing ones can still be edited or deleted, and those edits save to the sidecar of a file that is gone.
 - **Updater UX:** no "check now" command and no notice when a check fails. Decide after the first real update.
 - Carried over: card quote shows raw markdown; notes `Sheet` below ~900px (UI plan step 4); popover focus after "Edit comment"; tooltip for an unreadable sidecar.
