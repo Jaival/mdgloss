@@ -1,17 +1,17 @@
 # Handoff
 
-From v0.0.4 (17 Oct) to the week 7 work (6 Nov). Written 13 November 2026.
+From v0.0.4 (17 Oct) to v0.0.7 (21 Nov). Last updated 21 November 2026.
 
 Every sprint uses the same flow: a `sprint-N` branch, one stacked PR per step (the first targets `sprint-N`, each later PR targets the one before it), merged bottom-up, then `sprint-N` → `main` in one PR and a `vX.Y.Z` tag.
 
 ## Versions at a glance
 
-| Version | Sprint (spec week)            | State                                                                                                                             |
-| ------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 0.0.4   | Week 4: highlights            | Tagged 17 Oct. The starting point of this note.                                                                                   |
-| 0.0.5   | Week 5: comments, notes panel | Merged into `main` ([#48](https://github.com/Jaival/mdgloss/pull/48)), tagged 31 Oct.                                             |
-| 0.0.6   | Week 6: live reload           | Merged into `sprint-6`; version set. [#58](https://github.com/Jaival/mdgloss/pull/58) (`sprint-6` → `main`) open. **Not tagged.** |
-| 0.0.7   | Week 7: updates               | Two commits on local branches, **not pushed, no PRs**. Version still reads 0.0.6.                                                 |
+| Version | Sprint (spec week)            | State                                                                                                                           |
+| ------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 0.0.4   | Week 4: highlights            | Tagged 17 Oct. The starting point of this note.                                                                                 |
+| 0.0.5   | Week 5: comments, notes panel | Merged into `main` ([#48](https://github.com/Jaival/mdgloss/pull/48)), tagged 31 Oct.                                           |
+| 0.0.6   | Week 6: live reload           | Tagged on `sprint-6`; draft release not published. [#58](https://github.com/Jaival/mdgloss/pull/58) (`sprint-6` → `main`) open. |
+| 0.0.7   | Week 7: updates               | Merged into `sprint-7`, version set, tagged; draft release. `sprint-7` → `main` PR open.                                        |
 
 ## 0.0.5: comments and notes panel (done)
 
@@ -43,16 +43,14 @@ Checks passed locally (164 tests). Hand checks in `bun tauri dev`, still to do b
 - Same file in two windows, or a hand-edited sidecar: a highlight added in one shows in the other.
 - A file with no `.mdgloss` folder yet: after the first highlight, outside sidecar changes still show.
 
-## 0.0.7: updates (local only)
+## 0.0.7: updates (merged into `sprint-7`)
 
-Branches: `sprint-7` (= `sprint-6` head), `feat/updater` on it, `feat/last-open` on that. Neither is pushed.
+1. [#60](https://github.com/Jaival/mdgloss/pull/60) **Tauri updater**: checks `latest.json` on GitHub Releases at most once a day ([`updates.ts`](src/updates.ts)), downloads in the background, "Restart to update" toolbar button. Dev builds never check. `release.yml` signs update bundles with `TAURI_SIGNING_PRIVATE_KEY`.
+2. [#61](https://github.com/Jaival/mdgloss/pull/61) **Reopen last folder or file**: `last-open.json` in app data; `restore_open` re-grants saved paths on start and drops missing ones; `remember_open` saves only paths already in the fs scope.
+3. [#62](https://github.com/Jaival/mdgloss/pull/62) macOS and Windows testing guides for beta testers. [#63](https://github.com/Jaival/mdgloss/pull/63) README asks users how they use mdgloss.
+4. [#66](https://github.com/Jaival/mdgloss/pull/66) **Updater key**: set 21 Nov. The public key (ID `F617EB7D3DA3947E`) is in [`tauri.conf.json`](src-tauri/tauri.conf.json); the private key and password are repository secrets.
 
-1. `feat/updater` (3acbbe0) **Tauri updater**: checks `latest.json` on GitHub Releases at most once a day ([`updates.ts`](src/updates.ts)), downloads in the background, "Restart to update" toolbar button. Dev builds never check. `release.yml` signs update bundles with `TAURI_SIGNING_PRIVATE_KEY`.
-2. `feat/last-open` (89dd641) **Reopen last folder or file**: `last-open.json` in app data; `restore_open` re-grants saved paths on start and drops missing ones; `remember_open` saves only paths already in the fs scope.
-
-Both touch Rust ([`lib.rs`](src-tauri/src/lib.rs)).
-
-**Updater key:** set 21 Nov. The public key (ID `F617EB7D3DA3947E`) is in [`tauri.conf.json`](src-tauri/tauri.conf.json); the private key and password are repository secrets. The first signed release has to be installed by hand; updates from it on are automatic.
+`sprint-7` contains `sprint-6`, so its PR into `main` also carries 0.0.6. v0.0.7 is the first signed release: install it by hand once; updates from it on are automatic. Older versions can't update themselves.
 
 ## Untracked in the working tree
 
@@ -61,14 +59,13 @@ Both touch Rust ([`lib.rs`](src-tauri/src/lib.rs)).
 
 ## Next (in order)
 
-1. Hand-check the 0.0.6 list above. Merge [#58](https://github.com/Jaival/mdgloss/pull/58) into `main`, tag v0.0.6.
-2. Updater key pair, secrets and `pubkey` (blocker above).
-3. Rebase `sprint-7` on `main` after step 1. Run full CI locally (incl. `cargo fmt`, `cargo clippy`). Push, open the stacked PRs `feat/updater` → `sprint-7`, `feat/last-open` → `feat/updater`.
-4. Hand-check: updater with a real older install against a newer tag; last-open with a folder, a single file, and a deleted path.
-5. Bump to 0.0.7, merge `sprint-7` into `main`, tag v0.0.7. Mark week 7 in [SPEC.md](docs/SPEC.md).
-6. Week 8: tag v0.1.0 (alpha). Decide where the UI plan goes; it absorbs the week 8 notes shortcut.
-7. Still open from weeks 4 and 5: release checklist on a Mac, Gatekeeper text in `.github/release-header.md`, first dogfooding session on Windows.
-8. Open Dependabot PRs: [#50](https://github.com/Jaival/mdgloss/pull/50), [#52](https://github.com/Jaival/mdgloss/pull/52), [#59](https://github.com/Jaival/mdgloss/pull/59).
+1. Check the v0.0.7 draft: `latest.json` and a `.sig` per update bundle are attached (release checklist in [RELEASING.md](docs/RELEASING.md#release-checklist)).
+2. Hand-check the 0.0.6 list above and last-open (a folder, a single file, a deleted path) on the v0.0.7 installers.
+3. Merge the `sprint-7` → `main` PR, close [#58](https://github.com/Jaival/mdgloss/pull/58) (its commits ride along). Publish v0.0.7; leave the v0.0.6 draft unpublished or delete it.
+4. First real update test: tag v0.0.8 (any small fix) and check an installed v0.0.7 offers "Restart to update" within a day.
+5. Week 8: tag v0.1.0 (alpha). Decide where the UI plan goes; it absorbs the week 8 notes shortcut.
+6. Still open from weeks 4 and 5: release checklist on a Mac, Gatekeeper text in `.github/release-header.md`, first dogfooding session on Windows.
+7. Open Dependabot PRs: [#52](https://github.com/Jaival/mdgloss/pull/52), [#64](https://github.com/Jaival/mdgloss/pull/64), [#65](https://github.com/Jaival/mdgloss/pull/65).
 
 ## Open decisions and checks
 
