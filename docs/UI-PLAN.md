@@ -26,6 +26,8 @@ Decided 11 November 2026. Mockups: [`mockups/ui-directions.html`](mockups/ui-dir
 
 ## Steps (one PR each, stacked)
 
+Scheduled 21 November for the v0.1.0 alpha, weeks 8 to 10 (23 November to 13 December). Step 8 follows when the fonts arrive.
+
 1. **Tokens.** `--font-reader`, `--font-reader-heading`, `--reader-size`, `--reader-measure` in `index.css`; `markdown.css` reads them. No visual change. Makes the later font swap one edit.
 2. **Header.** Breadcrumb (folder / file) in place of the full path; highlight count chip; orphan chip that opens the "Text not found" list in a popover.
 3. **Sidebar tabs.** Files and Outline. Outline lists the document's headings with a note count each, marks the heading in view, and scrolls on click.
@@ -46,7 +48,6 @@ Steps 1 to 3 and 5 are independent of each other. Step 6 needs 4 (the `Sheet` fa
 
 ## Open decisions
 
-- Where this goes in the sprint plan. It replaces or absorbs the week 8 "notes shortcut" item; the rest is unscheduled.
 - Whether the serif reading font belongs to focus mode only or is a separate reader setting. Decide when the fonts arrive.
 - Mockup D (review desk across a folder) is not planned. Revisit after export exists.
 
