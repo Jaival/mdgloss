@@ -194,7 +194,7 @@ The app checks `https://github.com/Jaival/mdgloss/releases/latest/download/lates
 
 Update bundles are signed with the updater's own key pair, which is free and separate from OS code signing. The public key is in `tauri.conf.json` (`plugins.updater.pubkey`); the private key and its password are repository secrets that `release.yml` passes to `tauri-action`.
 
-Setup, once:
+Setup, once (done 21 Nov 2026, key ID `F617EB7D3DA3947E`):
 
 1. Generate the key pair and set a password:
 
