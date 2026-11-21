@@ -1,34 +1,79 @@
 # Handoff
 
-Sprint 2026-11-02 (spec week 5): comments and sidebar. Branch `sprint-5`; each step is its own PR, stacked: #42 targets `sprint-5` and each later PR targets the one before it, and `sprint-5` merges into `main` when the week is done.
+From v0.0.4 (17 Oct) to v0.0.7 (21 Nov). Last updated 21 November 2026.
 
-## Done (PRs open, 31 Oct)
+Every sprint uses the same flow: a `sprint-N` branch, one stacked PR per step (the first targets `sprint-N`, each later PR targets the one before it), merged bottom-up, then `sprint-N` → `main` in one PR and a `vX.Y.Z` tag.
 
-Merge in this order, each into `sprint-5`. Head branches are deleted on merge, so GitHub retargets the next PR to `sprint-5`. Merge a PR only after its base PR has merged; otherwise it lands in the feature branch (as #10 did).
+## Versions at a glance
 
-1. [#42](https://github.com/Jaival/mdgloss/pull/42) **Per-field merge** in [`merge.ts`](src/annotations/merge.ts). Spike finding 1: a comment in one window and a colour change in another on the same highlight now both survive. Same-field conflicts still go to the later `updated`.
-2. [#43](https://github.com/Jaival/mdgloss/pull/43) **Toolbar ignores keys typed in a text field** ([`keys.ts`](src/lib/keys.ts)). Spike finding 2.
-3. [#44](https://github.com/Jaival/mdgloss/pull/44) **Comment popover** ([`CommentPopover.tsx`](src/annotations/CommentPopover.tsx)). Toolbar button or `C`. Anchored to the `<mark>` or the selection `Range`, so it follows the text on scroll. Saves once on `Ctrl/Cmd+Enter`, click outside or blur; `Esc` discards. A comment on a new selection creates a yellow highlight in one save.
-4. [#45](https://github.com/Jaival/mdgloss/pull/45) **Margin marker** for commented highlights: `data-comment` on the first mark, a CSS `MessageSquare` in the right margin.
-5. [#46](https://github.com/Jaival/mdgloss/pull/46) **Notes panel**: [`NotesPanel.tsx`](src/annotations/NotesPanel.tsx), toggled from the header. Cards in document order; click scrolls and pulses; menu edits the comment or deletes.
+| Version | Sprint (spec week)            | State                                                                                                                           |
+| ------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 0.0.4   | Week 4: highlights            | Tagged 17 Oct. The starting point of this note.                                                                                 |
+| 0.0.5   | Week 5: comments, notes panel | Merged into `main` ([#48](https://github.com/Jaival/mdgloss/pull/48)), tagged 31 Oct.                                           |
+| 0.0.6   | Week 6: live reload           | Tagged on `sprint-6`; draft release not published. [#58](https://github.com/Jaival/mdgloss/pull/58) (`sprint-6` → `main`) open. |
+| 0.0.7   | Week 7: updates               | Merged into `sprint-7`, version set, tagged; draft release. `sprint-7` → `main` PR open.                                        |
 
-All five pass format, lint, typecheck, tests (141) and build locally. None touch Rust.
+## 0.0.5: comments and notes panel (done)
 
-## Not checked in the app
+Between v0.0.4 and the sprint: sidecar three-way merge with atomic writes ([#36](https://github.com/Jaival/mdgloss/pull/36)), per-platform release checklist ([#37](https://github.com/Jaival/mdgloss/pull/37)), dogfooding log ([#38](https://github.com/Jaival/mdgloss/pull/38)), comment popover spike ([#39](https://github.com/Jaival/mdgloss/pull/39)), spec 1.4.
 
-There are no component tests and the reader needs Tauri to open a file, so every UI step above is unchecked by hand. Run `bun tauri dev` on `docs/release-check/` and go through the checks listed in #44, #45 and #46 before merging `sprint-5` into `main`.
+Sprint 5, merged into `sprint-5` then `main`:
 
-## Next (sprint order)
+1. [#42](https://github.com/Jaival/mdgloss/pull/42) Per-field merge in [`merge.ts`](src/annotations/merge.ts).
+2. [#43](https://github.com/Jaival/mdgloss/pull/43) Toolbar ignores keys typed in a text field ([`keys.ts`](src/lib/keys.ts)).
+3. [#44](https://github.com/Jaival/mdgloss/pull/44) Comment popover ([`CommentPopover.tsx`](src/annotations/CommentPopover.tsx)).
+4. [#45](https://github.com/Jaival/mdgloss/pull/45) Margin marker for commented highlights.
+5. [#46](https://github.com/Jaival/mdgloss/pull/46) Notes panel ([`NotesPanel.tsx`](src/annotations/NotesPanel.tsx)).
 
-1. Done 31 Oct: #44, #45 and #46 checked in `bun tauri dev`; all five PRs merged into `sprint-5`.
-2. P1 (you) Run the release checklist on a Mac (week 5 "done when"): single file and folder, `.mdgloss` grant, selections across formatting. Record the Gatekeeper text and whether the universal build opens on Apple Silicon, then fix `.github/release-header.md`.
-3. Still open from week 4: first dogfooding session on Windows. The trademark check found no conflicts (31 Oct).
-4. Done 31 Oct: `sprint-5` merged into `main`, week 5 row updated, v0.0.5 tagged.
+After: [#49](https://github.com/Jaival/mdgloss/pull/49) Dependabot skips TypeScript majors until typescript-eslint supports 7.
+
+## 0.0.6: live reload (merged into `sprint-6`, not in `main`)
+
+1. [#53](https://github.com/Jaival/mdgloss/pull/53) Exact re-anchoring: [`findQuote`](src/annotations/anchor.ts); `placeHighlights` returns `{ placed, orphaned }`.
+2. [#54](https://github.com/Jaival/mdgloss/pull/54) "Text not found" section for orphaned highlights in the notes panel.
+3. [#55](https://github.com/Jaival/mdgloss/pull/55) The open file and the folder tree reload on disk changes.
+4. [#56](https://github.com/Jaival/mdgloss/pull/56) Sidecar reload: `AnnotationStore.watch`, `useAnnotations` reloads behind the save queue.
+
+Checks passed locally (164 tests). Hand checks in `bun tauri dev`, still to do before merging #58:
+
+- Add a paragraph above a highlight in another editor and save: the highlight follows, scroll stays.
+- Edit a highlighted quote: it moves to "Text not found". Undo: it comes back.
+- Save from an editor that replaces the file (vim, some IDEs): the reader still reloads.
+- In a folder: create, rename, delete a `.md` file: the tree follows. Sidecar writes do not reload the tree.
+- Same file in two windows, or a hand-edited sidecar: a highlight added in one shows in the other.
+- A file with no `.mdgloss` folder yet: after the first highlight, outside sidecar changes still show.
+
+## 0.0.7: updates (merged into `sprint-7`)
+
+1. [#60](https://github.com/Jaival/mdgloss/pull/60) **Tauri updater**: checks `latest.json` on GitHub Releases at most once a day ([`updates.ts`](src/updates.ts)), downloads in the background, "Restart to update" toolbar button. Dev builds never check. `release.yml` signs update bundles with `TAURI_SIGNING_PRIVATE_KEY`.
+2. [#61](https://github.com/Jaival/mdgloss/pull/61) **Reopen last folder or file**: `last-open.json` in app data; `restore_open` re-grants saved paths on start and drops missing ones; `remember_open` saves only paths already in the fs scope.
+3. [#62](https://github.com/Jaival/mdgloss/pull/62) macOS and Windows testing guides for beta testers. [#63](https://github.com/Jaival/mdgloss/pull/63) README asks users how they use mdgloss.
+4. [#66](https://github.com/Jaival/mdgloss/pull/66) **Updater key**: set 21 Nov. The public key (ID `F617EB7D3DA3947E`) is in [`tauri.conf.json`](src-tauri/tauri.conf.json); the private key and password are repository secrets.
+
+`sprint-7` contains `sprint-6`, so its PR into `main` also carries 0.0.6. v0.0.7 is the first signed release: install it by hand once; updates from it on are automatic. Older versions can't update themselves.
+
+## Untracked in the working tree
+
+- `CLAUDE.md` (Checks section). Branch `docs/checks-section` holds a committed version; use one, drop the other.
+- [`docs/UI-PLAN.md`](docs/UI-PLAN.md) and [`docs/mockups/`](docs/mockups/): UI direction decided 11 Nov (margin notes, sidebar tabs, palette, focus mode). Not scheduled yet.
+
+## Next (in order)
+
+1. Check the v0.0.7 draft: `latest.json` and a `.sig` per update bundle are attached (release checklist in [RELEASING.md](docs/RELEASING.md#release-checklist)).
+2. Hand-check the 0.0.6 list above and last-open (a folder, a single file, a deleted path) on the v0.0.7 installers.
+3. Merge the `sprint-7` → `main` PR, close [#58](https://github.com/Jaival/mdgloss/pull/58) (its commits ride along). Publish v0.0.7; leave the v0.0.6 draft unpublished or delete it.
+4. First real update test: tag v0.0.8 (any small fix) and check an installed v0.0.7 offers "Restart to update" within a day.
+5. Week 8: tag v0.1.0 (alpha). Decide where the UI plan goes; it absorbs the week 8 notes shortcut.
+6. Still open from weeks 4 and 5: release checklist on a Mac, Gatekeeper text in `.github/release-header.md`, first dogfooding session on Windows.
+7. Open Dependabot PRs: [#52](https://github.com/Jaival/mdgloss/pull/52), [#64](https://github.com/Jaival/mdgloss/pull/64), [#65](https://github.com/Jaival/mdgloss/pull/65).
 
 ## Open decisions and checks
 
-- **Left out of the notes panel, from DESIGN.md:** opening it on the first annotation (it opens only from the header button), and the `Sheet` below ~900px window width. Both are small; decide after daily use.
-- **The card quote is the raw source text**, so `**bold**` shows its asterisks. Showing the rendered text needs the marks' DOM text or a markdown-to-text pass. Decide after daily use.
-- **Popover focus after "Edit comment" in the card menu.** The menu is told not to take focus back so the popover keeps it. If the popover closes straight away in the app, this is why.
-- No shortcut for the notes panel yet. Keyboard shortcuts are week 8.
-- From week 4, still open: macOS Gatekeeper text, the tooltip when a sidecar can't be read, a sidecar changed on disk shows only after the next save (file watching is week 6).
+- **Re-anchored offsets aren't saved.** Revisit with fuzzy matching (week 11), which needs `approximate` stored.
+- **Re-attaching an orphaned highlight** (spec step 4) isn't built. The menu only deletes.
+- **Orphans are easy to miss.** UI plan step 2 (orphan chip) closes this.
+- **Comment popover stays open across a reload** and can drift.
+- **A sidecar created elsewhere** before this app ever saved isn't picked up until the file is reopened.
+- **The open file deleted on disk** keeps showing its last version with no notice.
+- **Updater UX:** no "check now" command and no notice when a check fails. Decide after the first real update.
+- Carried over: card quote shows raw markdown; notes `Sheet` below ~900px (UI plan step 4); popover focus after "Edit comment"; tooltip for an unreadable sidecar.

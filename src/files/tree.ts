@@ -19,6 +19,21 @@ function compareNodes(a: TreeNode, b: TreeNode): number {
 }
 
 /**
+ * Whether a path created or removed under `root` can change the tree: false
+ * inside folders the tree skips (so sidecar writes in .mdgloss don't reload it).
+ */
+export function affectsTree(root: string, path: string): boolean {
+  const normalize = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "");
+  const base = normalize(root);
+  const full = normalize(path);
+  if (!full.startsWith(`${base}/`)) return false;
+  return !full
+    .slice(base.length + 1)
+    .split("/")
+    .some(isSkippedFolder);
+}
+
+/**
  * Lists the markdown files under a folder, recursively.
  * Folders without any markdown file inside them are left out.
  */

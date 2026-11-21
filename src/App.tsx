@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { appDataDir } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
-import { FileText, FolderOpen, HardDrive, Monitor, Moon, PanelRight, Sun } from "lucide-react";
+import {
+  Download,
+  FileText,
+  FolderOpen,
+  HardDrive,
+  Monitor,
+  Moon,
+  PanelRight,
+  Sun,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -38,7 +47,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import { CommentPopover, type Anchor } from "./annotations/CommentPopover";
 import { createHighlight, placeHighlights } from "./annotations/highlights";
 import { HighlightToolbar } from "./annotations/HighlightToolbar";
@@ -47,7 +55,7 @@ import { AppDataStore, LocalAnnotationStore, SidecarStore } from "./annotations/
 import type { HighlightColor } from "./annotations/types";
 import { useAnnotations } from "./annotations/useAnnotations";
 import { FileTree } from "./files/FileTree";
-import { loadMarkdownTree, type TreeNode } from "./files/tree";
+import { affectsTree, loadMarkdownTree, type TreeNode } from "./files/tree";
 import { baseName, joinPath } from "./fs/path";
 import { TauriFileSystem } from "./fs/tauri";
 import { classifyLink, resolveImage } from "./markdown/links";
@@ -55,6 +63,7 @@ import { Markdown } from "./markdown/Markdown";
 import { imageSources } from "./markdown/pipeline";
 import { toSourceSelection, type SourceSelection } from "./selection/sourceSelection";
 import { isThemeSetting, useTheme } from "./theme";
+import { useUpdate } from "./updates";
 import "./markdown/markdown.css";
 
 const fs = new TauriFileSystem();
@@ -68,7 +77,15 @@ const annotationStore = new LocalAnnotationStore(
 interface Workspace {
   /** Folder name, or the file name when a single file is open. */
   title: string;
+  /** The opened folder; null when a single file is open. */
+  root: string | null;
   tree: TreeNode[];
+}
+
+/** What was open when the app last closed (see restore_open in lib.rs). */
+interface LastOpen {
+  folder: string | null;
+  file: string | null;
 }
 
 /** What the floating highlight toolbar or the comment popover is acting on. */
@@ -92,29 +109,58 @@ function decodeEmbed(src: string): string {
   }
 }
 
+/**
+ * Opening a single file only lets the asset protocol load that file, so grant the
+ * images it links to before rendering, and find the files behind its Obsidian
+ * embeds. A failure only costs images, not the document.
+ */
+async function allowImages(docPath: string, content: string): Promise<Map<string, string>> {
+  const { paths, embeds } = imageSources(content);
+  const images = paths
+    .map((src) => resolveImage(docPath, src))
+    .filter((image) => image.type === "file")
+    .map((image) => image.url);
+  if (images.length === 0 && embeds.length === 0) return new Map();
+  try {
+    const found = await invoke<(string | null)[]>("allow_document_images", {
+      document: docPath,
+      images,
+      embeds: embeds.map(decodeEmbed),
+    });
+    return new Map(
+      embeds.flatMap((src, i) => (found[i] ? [[src, found[i]] as [string, string]] : [])),
+    );
+  } catch (e) {
+    console.error(`Could not allow images for ${docPath}`, e);
+    return new Map();
+  }
+}
+
 function App() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [doc, setDoc] = useState<OpenDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
+  const appUpdate = useUpdate();
   const readerRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLElement>(null);
   const [toolbar, setToolbar] = useState<Target | null>(null);
   const [commenting, setCommenting] = useState<Target | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  /** False until the last session's files are shown, so the empty start isn't saved over them. */
+  const [restored, setRestored] = useState(false);
   const annotations = useAnnotations(annotationStore, doc?.path ?? null);
   const { update } = annotations;
 
   const editing = toolbar ?? commenting;
   const activeId = editing?.type === "highlight" ? editing.id : null;
+  const placement = useMemo(
+    () => placeHighlights(doc?.content ?? "", doc ? annotations.highlights : []),
+    [doc, annotations.highlights],
+  );
   const placed = useMemo(
-    () =>
-      doc
-        ? placeHighlights(doc.content, annotations.highlights).map((h) =>
-            h.id === activeId ? { ...h, active: true } : h,
-          )
-        : [],
-    [doc, annotations.highlights, activeId],
+    () => placement.placed.map((h) => (h.id === activeId ? { ...h, active: true } : h)),
+    [placement, activeId],
   );
   // The panel lists what the reader shows, in document order.
   const listed = useMemo(() => {
@@ -128,6 +174,46 @@ function App() {
   useEffect(() => {
     readerRef.current?.scrollTo(0, 0);
   }, [doc?.path]);
+
+  // Live reload: show the open file again when it changes on disk. The reader
+  // keeps its scroll position and highlights are re-anchored on the new text.
+  const docPath = doc?.path;
+  useEffect(() => {
+    if (!docPath) return;
+    return fs.watch(docPath, async (event) => {
+      // Editors that save by replacing the file remove it, then create it again.
+      if (event.kind === "removed") return;
+      let content: string;
+      try {
+        content = await fs.readFile(docPath);
+      } catch (e) {
+        // Mid-save or gone: keep showing the last version.
+        console.warn(`Could not reload ${docPath}`, e);
+        return;
+      }
+      const embeds = await allowImages(docPath, content);
+      setDoc((shown) =>
+        shown?.path === docPath && shown.content !== content
+          ? { path: docPath, content, embeds }
+          : shown,
+      );
+      // A selection's offsets belong to the old text.
+      setToolbar((target) => (target?.type === "selection" ? null : target));
+    });
+  }, [docPath]);
+
+  // Files added, removed or renamed in the open folder update the tree.
+  const root = workspace?.root;
+  useEffect(() => {
+    if (!root) return;
+    return fs.watch(root, (event) => {
+      if (event.kind === "modified" || !affectsTree(root, event.path)) return;
+      loadMarkdownTree(fs, root).then(
+        (tree) => setWorkspace((shown) => (shown?.root === root ? { ...shown, tree } : shown)),
+        (e: unknown) => console.error(`Could not reload the tree for ${root}`, e),
+      );
+    });
+  }, [root]);
 
   async function run(action: () => Promise<void>) {
     setError(null);
@@ -144,31 +230,22 @@ function App() {
     setToolbar(null);
   }
 
-  /**
-   * Opening a single file only lets the asset protocol load that file, so grant the
-   * images it links to before rendering, and find the files behind its Obsidian
-   * embeds. A failure only costs images, not the document.
-   */
-  async function allowImages(docPath: string, content: string): Promise<Map<string, string>> {
-    const { paths, embeds } = imageSources(content);
-    const images = paths
-      .map((src) => resolveImage(docPath, src))
-      .filter((image) => image.type === "file")
-      .map((image) => image.url);
-    if (images.length === 0 && embeds.length === 0) return new Map();
-    try {
-      const found = await invoke<(string | null)[]>("allow_document_images", {
-        document: docPath,
-        images,
-        embeds: embeds.map(decodeEmbed),
-      });
-      return new Map(
-        embeds.flatMap((src, i) => (found[i] ? [[src, found[i]] as [string, string]] : [])),
-      );
-    } catch (e) {
-      console.error(`Could not allow images for ${docPath}`, e);
-      return new Map();
-    }
+  async function showSingleFile(path: string) {
+    setWorkspace({
+      title: baseName(path),
+      root: null,
+      tree: [{ kind: "file", name: baseName(path), path }],
+    });
+    await showFile(path);
+  }
+
+  async function showFolder(path: string) {
+    setWorkspace({
+      title: baseName(path),
+      root: path,
+      tree: await loadMarkdownTree(fs, path),
+    });
+    setDoc(null);
   }
 
   const openFile = () =>
@@ -178,25 +255,35 @@ function App() {
         directory: false,
         filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
       });
-      if (path === null) return;
-      setWorkspace({
-        title: baseName(path),
-        tree: [{ kind: "file", name: baseName(path), path }],
-      });
-      await showFile(path);
+      if (path !== null) await showSingleFile(path);
     });
 
   const openFolder = () =>
     run(async () => {
       // recursive: true grants access to subfolders, not just the picked folder itself.
       const path = await open({ multiple: false, directory: true, recursive: true });
-      if (path === null) return;
-      setWorkspace({
-        title: baseName(path),
-        tree: await loadMarkdownTree(fs, path),
-      });
-      setDoc(null);
+      if (path !== null) await showFolder(path);
     });
+
+  // Show the folder and file that were open when the app last closed. Paths that
+  // have gone since are dropped in Rust, so a missing folder just starts empty.
+  const showLastOpen = useEffectEvent(async ({ folder, file }: LastOpen) => {
+    if (folder) await showFolder(folder);
+    if (file) await (folder ? showFile(file) : showSingleFile(file));
+  });
+  useEffect(() => {
+    invoke<LastOpen>("restore_open")
+      .then(showLastOpen)
+      .catch((e: unknown) => console.warn("Could not reopen the last folder or file", e))
+      .finally(() => setRestored(true));
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    invoke("remember_open", { folder: root ?? null, file: docPath ?? null }).catch((e: unknown) =>
+      console.warn("Could not remember the open folder or file", e),
+    );
+  }, [restored, root, docPath]);
 
   function imageSrc(doc: OpenDocument, src: string): string {
     const embed = doc.embeds.get(src);
@@ -421,13 +508,24 @@ function App() {
               {headerError}
             </span>
           )}
+          <span className="ml-auto" />
+          {appUpdate.ready && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => run(appUpdate.install)}
+            >
+              <Download data-icon="inline-start" />
+              Restart to update to {appUpdate.ready.version}
+            </Button>
+          )}
           {doc && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="ml-auto"
                   aria-label="Toggle notes"
                   aria-pressed={notesOpen}
                   onClick={() => setNotesOpen((open) => !open)}
@@ -440,12 +538,7 @@ function App() {
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(!doc && "ml-auto")}
-                aria-label="Theme"
-              >
+              <Button variant="ghost" size="icon" aria-label="Theme">
                 <ThemeIcon />
               </Button>
             </DropdownMenuTrigger>
@@ -523,6 +616,7 @@ function App() {
           {doc && notesOpen && (
             <NotesPanel
               highlights={listed}
+              orphaned={placement.orphaned}
               onSelect={goToHighlight}
               onEditComment={editCommentFromPanel}
               onDelete={removeHighlight}

@@ -1,4 +1,5 @@
 import type { SourceSelection } from "../selection/sourceSelection";
+import { findQuote } from "./anchor";
 import type { Highlight, HighlightColor } from "./types";
 
 /** A highlight placed in the current source, ready to render. */
@@ -33,18 +34,34 @@ export function createHighlight(
   };
 }
 
+/** The highlights of a source: placed ones in the order given, and those that couldn't be placed. */
+export interface Placement {
+  placed: PlacedHighlight[];
+  /** Their text is gone or changed; listed in the notes panel, kept in the file. */
+  orphaned: Highlight[];
+}
+
 /**
- * Finds where each highlight sits in `source`. For now a highlight is placed
- * only if its quote is still at the stored offset. Re-anchoring moved text
- * comes in week 6; until then a highlight that doesn't match isn't shown,
- * and it stays in the file untouched.
+ * Finds where each highlight sits in `source` by exact re-anchoring (see
+ * findQuote). The result isn't written back: the sidecar keeps the offset the
+ * highlight was saved with, and a highlight that can't be placed stays in the
+ * file untouched.
  */
-export function placeHighlights(source: string, highlights: Highlight[]): PlacedHighlight[] {
-  return highlights.flatMap((highlight) => {
-    const start = highlight.offset;
-    const end = start + highlight.quote.length;
-    if (source.slice(start, end) !== highlight.quote) return [];
-    const placed: PlacedHighlight = { id: highlight.id, start, end, color: highlight.color };
-    return [highlight.comment ? { ...placed, commented: true } : placed];
-  });
+export function placeHighlights(source: string, highlights: Highlight[]): Placement {
+  const placement: Placement = { placed: [], orphaned: [] };
+  for (const highlight of highlights) {
+    const start = findQuote(source, highlight);
+    if (start === null) {
+      placement.orphaned.push(highlight);
+      continue;
+    }
+    const placed: PlacedHighlight = {
+      id: highlight.id,
+      start,
+      end: start + highlight.quote.length,
+      color: highlight.color,
+    };
+    placement.placed.push(highlight.comment ? { ...placed, commented: true } : placed);
+  }
+  return placement;
 }

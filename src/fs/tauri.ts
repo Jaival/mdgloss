@@ -88,9 +88,25 @@ export class TauriFileSystem implements FileSystem {
   }
 }
 
-/** Maps a native watcher event to mdgloss change events. Access events are ignored. */
+/**
+ * Maps a native watcher event to mdgloss change events. Access events are
+ * ignored. A rename is reported as the old path removed and the new one
+ * created, so a renamed file shows up in the tree.
+ */
 export function toChangeEvents(event: WatchEvent): ChangeEvent[] {
   const { type } = event;
+  if (typeof type !== "string" && "modify" in type && type.modify.kind === "rename") {
+    const { mode } = type.modify;
+    const [first, second] = event.paths;
+    if (mode === "from") return event.paths.map((path) => ({ path, kind: "removed" }));
+    if (mode === "to") return event.paths.map((path) => ({ path, kind: "created" }));
+    if (mode === "both" && first && second) {
+      return [
+        { path: first, kind: "removed" },
+        { path: second, kind: "created" },
+      ];
+    }
+  }
   let kind: ChangeEvent["kind"] | null;
   if (typeof type === "string") kind = "modified";
   else if ("create" in type) kind = "created";
