@@ -45,7 +45,7 @@ function select(root: HTMLElement, rendered: string): Range {
 function highlight(source: string, rendered: string) {
   const root = mount(source);
   const selection = toSourceSelection(select(root, rendered), root, source)!;
-  const placed = placeHighlights(source, [createHighlight(selection, "green")]);
+  const { placed } = placeHighlights(source, [createHighlight(selection, "green")]);
   const marked = mount(source, placed);
   return [...marked.querySelectorAll<HTMLElement>("mark[data-highlight]")];
 }

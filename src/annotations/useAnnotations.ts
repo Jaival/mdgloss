@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { serializeAnnotations } from "./format";
 import type { AnnotationStore, StorageLocation } from "./store";
 import type { AnnotationFile, Highlight } from "./types";
 
@@ -53,6 +54,34 @@ export function useAnnotations(store: AnnotationStore | null, path: string | nul
 
   // A result for another file (or none yet) means this file is still loading.
   const current = loaded && loaded.path === path ? loaded : null;
+
+  // Load again when the stored file changes on disk: another device synced it,
+  // a `git pull` updated it, or another window saved it. Watching starts again
+  // after the first save, which may have created the .mdgloss folder.
+  const savedTo = current?.location ?? null;
+  useEffect(() => {
+    if (!store || !path) return;
+    return store.watch(path, () => {
+      // Queued behind saves, so this app's own writes have landed first.
+      saving.current = saving.current
+        .then(async () => {
+          const state = latest.current;
+          // A failed save's change is only on screen; don't replace it.
+          if (state?.path !== path || (state.file && state.error)) return;
+          const file = await store.load(path);
+          // An edit made meanwhile merges the copy on disk when it saves.
+          if (latest.current !== state) return;
+          if (state.file && serializeAnnotations(file) === serializeAnnotations(state.file)) return;
+          latest.current = { ...state, file, error: null };
+          setLoaded(latest.current);
+        })
+        .catch((e: unknown) => {
+          if (latest.current?.path !== path) return;
+          latest.current = { ...latest.current, error: `Annotations not reloaded: ${message(e)}` };
+          setLoaded(latest.current);
+        });
+    });
+  }, [store, path, savedTo]);
 
   function update(change: (highlights: Highlight[]) => Highlight[]) {
     const state = latest.current;

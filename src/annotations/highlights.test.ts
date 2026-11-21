@@ -31,21 +31,30 @@ describe("createHighlight", () => {
 
 describe("placeHighlights", () => {
   it("places a highlight whose quote is at its offset", () => {
-    expect(placeHighlights(source, [createHighlight(selection, "green")])).toMatchObject([
-      { start: 2, end: 9, color: "green" },
-    ]);
+    expect(placeHighlights(source, [createHighlight(selection, "green")])).toMatchObject({
+      placed: [{ start: 2, end: 9, color: "green" }],
+      orphaned: [],
+    });
   });
 
   it("flags a highlight with a comment", () => {
     const plain = createHighlight(selection, "green");
-    const [withComment, without] = placeHighlights(source, [{ ...plain, comment: "exam" }, plain]);
-    expect(withComment.commented).toBe(true);
-    expect(without.commented).toBeUndefined();
+    const { placed } = placeHighlights(source, [{ ...plain, comment: "exam" }, plain]);
+    expect(placed[0].commented).toBe(true);
+    expect(placed[1].commented).toBeUndefined();
   });
 
-  it("skips a highlight whose text has moved, until re-anchoring exists", () => {
-    const moved = { ...createHighlight(selection, "green"), offset: 3 };
-    expect(placeHighlights(source, [moved])).toEqual([]);
-    expect(placeHighlights("short", [createHighlight(selection, "green")])).toEqual([]);
+  it("follows a quote that moved", () => {
+    const highlight = createHighlight(selection, "green");
+    const { placed } = placeHighlights(`Intro.\n\n${source}`, [highlight]);
+    expect(placed).toMatchObject([{ id: highlight.id, start: 10, end: 17 }]);
+  });
+
+  it("orphans a highlight whose quote is gone, and keeps it unchanged", () => {
+    const highlight = createHighlight(selection, "green");
+    expect(placeHighlights("A program in execution.\n", [highlight])).toEqual({
+      placed: [],
+      orphaned: [highlight],
+    });
   });
 });
