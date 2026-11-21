@@ -66,17 +66,17 @@ The point of this release is the update path: an installed v0.0.7 must offer "Re
 
 ## Next (in order)
 
-1. Hand-check the 0.0.6 list above and last-open (a folder, a single file, a deleted path) on v0.0.7, if not done yet. Hand-check the deleted-file notice (#70) in `bun tauri dev`.
+1. A friend runs the hand checks: the 0.0.6 list above, last-open (a folder, a single file, a deleted path), the deleted-file notice (#70), and the macOS release checklist ([MACOS-TESTING.md](docs/MACOS-TESTING.md)).
 2. Merge the `sprint-8` stack bottom-up, then `sprint-8` → `main`. Tag v0.0.8 on `main`.
 3. Check the v0.0.8 draft: `latest.json` and a `.sig` per update bundle (release checklist in [RELEASING.md](docs/RELEASING.md#release-checklist)). Publish it.
 4. First real update test: an installed v0.0.7 offers "Restart to update" within a day and installs 0.0.8. Repeat on macOS if possible. If the download fails, check the `api.github.com/.../assets/<id>` URLs in `latest.json` first.
-5. Week 8: tag v0.1.0 (alpha). Decide where the UI plan goes; it absorbs the week 8 notes shortcut.
+5. Weeks 8 to 10 (to 13 Dec): [UI plan](docs/UI-PLAN.md) steps 1 to 7 and 9, one stacked PR each, then tag v0.1.0 (alpha). Write the gate script in `scripts/` before the 13 Dec mini-gate.
 6. Still open from weeks 4 and 5: release checklist on a Mac, Gatekeeper text in `.github/release-header.md`, first dogfooding session on Windows.
 7. Open Dependabot PRs: [#52](https://github.com/Jaival/mdgloss/pull/52), [#64](https://github.com/Jaival/mdgloss/pull/64), [#65](https://github.com/Jaival/mdgloss/pull/65).
 
 ## Open decisions and checks
 
-- **Re-anchored offsets aren't saved.** Revisit with fuzzy matching (week 11), which needs `approximate` stored.
+- **Re-anchored offsets aren't saved.** Revisit with fuzzy matching (week 14), which needs `approximate` stored.
 - **Re-attaching an orphaned highlight** (spec step 4) isn't built. The menu only deletes.
 - **Orphans are easy to miss.** UI plan step 2 (orphan chip) closes this.
 - **Comment popover stays open across a reload** and can drift.

@@ -1,6 +1,6 @@
 # Architecture
 
-How mdgloss is put together, as of week 4 (October 2026). [SPEC.md](SPEC.md) says what the app should do and when. This file says how the code does it. Parts not built yet are marked _planned_.
+How mdgloss is put together, as of v0.0.8 (November 2026). [SPEC.md](SPEC.md) says what the app should do and when. This file says how the code does it. Parts not built yet are marked _planned_.
 
 ## The rules everything follows
 
@@ -46,7 +46,7 @@ src/
   theme.ts             Light/dark/system, saved in localStorage
   updates.ts           Daily update check, background download, restart to install
   fs/                  FileSystem interface, Tauri adapter, path helpers
-  files/               Markdown file tree (loadMarkdownTree, FileTree)
+  files/               Markdown file tree (loadMarkdownTree, FileTree), open-file reload
   markdown/            Rendering pipeline, <Markdown>, links, Obsidian embeds
   selection/           Selection-to-source mapping (week 3)
   annotations/         Highlight model, file format, stores, toolbar (week 4)
@@ -86,7 +86,7 @@ interface FileSystem {
 
 `App.tsx` watches two things through `FileSystem.watch`:
 
-- **The open file.** On any change except a removal it re-reads the file, grants its images again and swaps the content in place. The reader keeps its scroll position, highlights are re-anchored on the new text, and an open toolbar for a selection closes because its offsets belong to the old text. A removal is ignored: editors that save by replacing the file remove it and create it again, and a file that is really gone keeps showing its last version.
+- **The open file.** On any change it re-reads the file ([`reloadFile`](../src/files/reload.ts)), grants its images again and swaps the content in place. The reader keeps its scroll position, highlights are re-anchored on the new text, and an open toolbar for a selection closes because its offsets belong to the old text. Editors that save by replacing the file remove it and create it again, so a removal only counts when the file is still gone at the re-read. Then the reader keeps the last version, shows a notice, and offers no toolbar for new highlights; existing highlights can still be edited. Opening a file or the file coming back clears the notice. A file that exists but can't be read (mid-save) keeps the last version without a notice.
 - **The opened folder** (not for a single file). A file or folder created, removed or renamed reloads the tree, unless it sits in a folder the tree skips ([`affectsTree`](../src/files/tree.ts)), so sidecar writes in `.mdgloss` don't. `toChangeEvents` reports a rename as the old path removed and the new one created.
 
 Paths are absolute strings. [`src/fs/path.ts`](../src/fs/path.ts) handles both `/` and `\`, so the same helpers work on Windows.
@@ -200,18 +200,18 @@ The full data model is in [SPEC.md](SPEC.md#data-model). Week 4 builds highlight
 1. Selecting text in the reader and releasing the mouse maps the range with `toSourceSelection` and opens the floating toolbar ([`HighlightToolbar.tsx`](../src/annotations/HighlightToolbar.tsx)) above it. Picking a colour (click, or `1`–`4`) saves a highlight with the quote, 32 characters of prefix and suffix, and the start offset.
 2. Clicking a highlight opens the toolbar for it: change colour, or delete (`Del`). `Esc` closes it, and so does scrolling, because the toolbar is fixed to the window.
 3. The toolbar's comment button (or `C`) swaps it for the comment popover ([`CommentPopover.tsx`](../src/annotations/CommentPopover.tsx)), a shadcn `Popover` anchored to the `<mark>` or the selection's `Range`, so it follows its text while the reader scrolls. The draft stays in the popover: `Ctrl/Cmd+Enter`, a click outside or moving focus away saves it once, `Esc` drops it, and an empty comment is saved as `null`. A comment on a new selection creates a yellow highlight with it in one save; a discarded one creates nothing. The toolbar ignores keys typed into a text field.
-4. `placeHighlights` finds each highlight in the current source by exact re-anchoring (see [Re-anchoring](#re-anchoring-weeks-6-and-11)). A highlight it can't place is orphaned: not shown in the reader, kept in the file unchanged.
+4. `placeHighlights` finds each highlight in the current source by exact re-anchoring (see [Re-anchoring](#re-anchoring-weeks-6-and-14)). A highlight it can't place is orphaned: not shown in the reader, kept in the file unchanged.
 5. [`applyHighlights`](../src/markdown/highlights.ts) copies the rendered HAST and, for each element with `data-text-*`, aligns its text to the source with `alignText` (the same alignment selection mapping uses) and wraps highlighted characters in `<mark class="highlight highlight-<color>" data-highlight="<id>">`. A highlight across a bold word, list items, paragraphs, table cells or a code block becomes one mark per piece of text, so the HTML stays valid. Overlaps: the later highlight wins. The first mark of a highlight with a comment gets `data-comment`, and CSS draws a `MessageSquare` marker for it in the right margin, on the line where the highlight starts.
 
 The marks are part of the React tree, not DOM edits after rendering, so React never fights over them, and the `data-text-*` attributes stay on their elements, so selections inside highlighted text still map. The pipeline result is memoized on the source and `applyHighlights` separately on the highlights, so changing a colour doesn't re-parse the document.
 
-### Re-anchoring _(weeks 6 and 11)_
+### Re-anchoring _(weeks 6 and 14)_
 
 Runs when a file opens and whenever it changes:
 
 1. Look for `prefix + quote + suffix` within 1,000 characters of the stored offset; the nearest one wins.
 2. Search the whole file for the quote. A single match is taken. Between repeats, the one whose surroundings share the most characters with the prefix (from its end) and the suffix (from its start) wins, and the nearest breaks a tie. Repeats with no shared context at all aren't guessed between.
-3. _(Week 11)_ Fuzzy match with diff-match-patch. Above the threshold (about 0.8 to start), the highlight is placed with status `approximate` until the user confirms it.
+3. _(Week 14)_ Fuzzy match with diff-match-patch. Above the threshold (about 0.8 to start), the highlight is placed with status `approximate` until the user confirms it.
 4. Otherwise `orphaned`, listed at the bottom of the sidebar for re-attaching or deleting.
 
 Steps 1 and 2 are [`findQuote`](../src/annotations/anchor.ts), tested against edited fixtures in `anchor.test.ts`. The result is computed on every render and not written back: the sidecar keeps the offset and `status` the highlight was saved with, so re-anchoring never writes a file on its own.
@@ -239,7 +239,7 @@ In edit mode (planned, could-have), highlights are re-anchored when the file is 
 ## Known gaps and decisions
 
 - **No Content Security Policy.** `tauri.conf.json` has `"csp": null`. Rendering is already safe (raw HTML dropped, no `innerHTML`), but a CSP would be a second line of defence. Set one before the public release. It has to allow the asset protocol for images.
-- **Large documents re-render whole.** The pipeline runs on every source change. Fine for course notes; revisit if live reload (week 6) feels slow on big files.
-- **Highlights aren't reachable by keyboard yet.** They open by click. The sidebar list in week 5 gives keyboard access.
+- **Large documents re-render whole.** The pipeline runs on every source change, including each live reload. Fine for course notes; revisit if it feels slow on big files.
+- **Highlights in the reader open by click only.** The notes panel's cards are buttons, so a highlight can be reached by keyboard from there.
 - **Not built yet:** the browser and demo adapters, edit mode, export.
 - **Linux** isn't a release target for version 1, though CI compiles and tests the Rust code on Linux.
