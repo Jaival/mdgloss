@@ -130,14 +130,14 @@ Fonts install as registry dependencies (`font-manrope`, `font-heading-figtree`).
 
 The document is set larger than the UI.
 
-| Element                  | Size                 | Line height | Weight       |
-| ------------------------ | -------------------- | ----------- | ------------ |
-| Body paragraph           | 17px (`text-[17px]`) | 1.7         | 400          |
-| H1                       | 32px                 | 1.2         | 700, Figtree |
-| H2                       | 24px                 | 1.3         | 600, Figtree |
-| H3                       | 20px                 | 1.4         | 600, Figtree |
-| Inline code / code block | 14.5px               | 1.6         | 400, mono    |
-| Measure (line length)    | `max-w-[68ch]`       |             |              |
+| Element                  | Size                      | Line height | Weight       |
+| ------------------------ | ------------------------- | ----------- | ------------ |
+| Body paragraph           | 17px (`text-[17px]`)      | 1.7         | 400          |
+| H1                       | 32px                      | 1.2         | 700, Figtree |
+| H2                       | 24px                      | 1.3         | 600, Figtree |
+| H3                       | 20px                      | 1.4         | 600, Figtree |
+| Inline code / code block | 14.5px                    | 1.6         | 400, mono    |
+| Measure (line length)    | `--reader-measure` (68ch) |             |              |
 
 ### UI scale
 
@@ -147,7 +147,20 @@ The document is set larger than the UI.
 | Metadata, timestamps, counts | `text-xs text-muted-foreground`      |
 | Panel titles                 | `text-sm font-heading font-semibold` |
 
-Reading font size should be user-adjustable (S/M/L) later. Build the reading view on a CSS variable (`--reader-size`) from day one so that's a one-line change.
+### Reader tokens
+
+The reading view (`src/markdown/markdown.css`) takes its body and heading fonts, size and measure only from these variables, set on `:root` in `src/index.css`. Code keeps the mono stack above. A font swap or a reader setting changes the token, not the reader styles.
+
+| Token                   | Value                            | Use                                          |
+| ----------------------- | -------------------------------- | -------------------------------------------- |
+| `--font-reader`         | `"Manrope Variable", sans-serif` | Document body text                           |
+| `--font-reader-heading` | `"Figtree Variable", sans-serif` | Document headings H1–H6                      |
+| `--reader-size`         | `17px`                           | Body size; the heading scale derives from it |
+| `--reader-measure`      | `68ch`                           | Line length of the text column               |
+
+Today the reader values equal the UI fonts (`font-sans`, `font-heading`). They are separate tokens so the reading font can change without touching the UI.
+
+Reading font size should be user-adjustable (S/M/L) later. That setting only changes `--reader-size`.
 
 ## 5. Layout
 

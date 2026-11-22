@@ -1,14 +1,13 @@
-/* Reading layout for rendered markdown. Colours are the design tokens in index.css;
-   the scale follows docs/DESIGN.md section 4. */
+/* Reading layout for rendered markdown. Colours, fonts, size and measure are the
+   design tokens in index.css; the scale follows docs/DESIGN.md section 4. */
 .markdown-body {
   /* Containing block for the comment markers in the margin. */
   position: relative;
-  /* Reading size. A future S/M/L setting only needs to change this. */
-  --reader-size: 17px;
 
-  /* 68ch of text, plus the px-8 side padding the article carries. */
-  max-width: calc(68ch + 4rem);
+  /* The measure of text, plus the px-8 side padding the article carries. */
+  max-width: calc(var(--reader-measure) + 4rem);
   margin: 0 auto;
+  font-family: var(--font-reader);
   font-size: var(--reader-size);
   line-height: 1.7;
   overflow-wrap: break-word;
@@ -24,7 +23,7 @@
 
 .markdown-body :is(h1, h2, h3, h4, h5, h6) {
   margin: 1.6em 0 0.6em;
-  font-family: var(--font-heading);
+  font-family: var(--font-reader-heading);
   line-height: 1.4;
   font-weight: 600;
   scroll-margin-top: 16px;
