@@ -1,12 +1,6 @@
 import { cn } from "@/lib/utils";
-import type { Highlight, HighlightColor } from "./types";
-
-const BORDER: Record<HighlightColor, string> = {
-  yellow: "border-l-highlight-yellow",
-  green: "border-l-highlight-green",
-  pink: "border-l-highlight-pink",
-  purple: "border-l-highlight-purple",
-};
+import { HIGHLIGHT_BORDER } from "./colors";
+import type { Highlight } from "./types";
 
 const DATE = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
 
@@ -17,7 +11,7 @@ export function CardBody({ highlight: h }: { highlight: Highlight }) {
       <span
         className={cn(
           "line-clamp-3 border-l-2 pl-2 text-xs text-muted-foreground",
-          BORDER[h.color],
+          HIGHLIGHT_BORDER[h.color],
         )}
       >
         {h.quote}

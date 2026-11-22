@@ -11,18 +11,12 @@ import {
 } from "@/components/ui/command";
 import { isPaletteShortcut, isTextEntry } from "@/lib/keys";
 import { cn } from "@/lib/utils";
-import type { Highlight, HighlightColor } from "../annotations/types";
+import { HIGHLIGHT_FILL } from "../annotations/colors";
+import type { Highlight } from "../annotations/types";
 import type { TreeNode } from "../files/tree";
 import type { ThemeSetting } from "../theme";
 import type { Heading } from "../markdown/headings";
 import { buildGroups, filterGroups, type CommandId, type PaletteItem } from "./items";
-
-const DOT: Record<HighlightColor, string> = {
-  yellow: "bg-highlight-yellow",
-  green: "bg-highlight-green",
-  pink: "bg-highlight-pink",
-  purple: "bg-highlight-purple",
-};
 
 interface CommandPaletteProps {
   open: boolean;
@@ -141,7 +135,7 @@ export function CommandPalette({
                   {item.kind === "note" && (
                     <span
                       aria-hidden
-                      className={cn("size-2 shrink-0 rounded-full", DOT[item.color])}
+                      className={cn("size-2 shrink-0 rounded-full", HIGHLIGHT_FILL[item.color])}
                     />
                   )}
                   {item.kind === "command" && <Terminal />}

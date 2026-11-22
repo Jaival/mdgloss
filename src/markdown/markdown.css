@@ -345,6 +345,14 @@
   pointer-events: none;
 }
 
+/* Where the reader is wide enough for margin notes (App.tsx, the reader's @4xl),
+   the comment card beside the text is the signal instead. */
+@container (min-width: 56rem) {
+  .markdown-body mark.highlight[data-comment]::before {
+    display: none;
+  }
+}
+
 /* The highlight the toolbar is editing. */
 .markdown-body mark.highlight[data-active] {
   outline: 2px solid var(--ring);

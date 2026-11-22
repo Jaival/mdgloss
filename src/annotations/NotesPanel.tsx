@@ -1,16 +1,9 @@
-import { useRef } from "react";
-import { ChevronRight, Ellipsis, MessageSquare, Trash2, Unlink } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronRight, Unlink } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CardBody } from "./CardBody";
+import { CardMenu } from "./CardMenu";
 import { OrphanList } from "./OrphanList";
 import type { Highlight } from "./types";
 
@@ -26,8 +19,8 @@ interface NotesPanelProps {
 }
 
 /**
- * The right-hand notes panel (docs/DESIGN.md sections 5 and 8): one card per
- * highlight with its quote and comment, and the orphaned ones in a section
+ * The notes list (docs/DESIGN.md sections 5 and 8), shown in a Sheet: one card
+ * per highlight with its quote and comment, and the orphaned ones in a section
  * at the bottom.
  */
 export function NotesPanel({
@@ -37,12 +30,9 @@ export function NotesPanel({
   onEditComment,
   onDelete,
 }: NotesPanelProps) {
-  // "Edit comment" moves focus to the comment popover; the menu mustn't take it back.
-  const keepFocus = useRef(false);
-
   return (
-    <aside aria-label="Notes" className="flex w-80 shrink-0 flex-col border-l">
-      <h2 className="flex h-10 shrink-0 items-center px-4 text-sm font-medium">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <h2 className="flex h-16 shrink-0 items-center px-4 pr-14 text-sm font-medium">
         Highlights
         {highlights.length > 0 && (
           <span className="ml-1.5 text-muted-foreground">{highlights.length}</span>
@@ -65,39 +55,12 @@ export function NotesPanel({
                   >
                     <CardBody highlight={h} />
                   </button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-1.5 right-1.5 size-7"
-                        aria-label="Highlight actions"
-                      >
-                        <Ellipsis />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      onCloseAutoFocus={(event) => {
-                        if (keepFocus.current) event.preventDefault();
-                        keepFocus.current = false;
-                      }}
-                    >
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          keepFocus.current = true;
-                          onEditComment(h.id);
-                        }}
-                      >
-                        <MessageSquare />
-                        {h.comment ? "Edit comment" : "Add comment"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem variant="destructive" onSelect={() => onDelete(h.id)}>
-                        <Trash2 />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <CardMenu
+                    className="absolute top-1.5 right-1.5"
+                    commented={Boolean(h.comment)}
+                    onEditComment={() => onEditComment(h.id)}
+                    onDelete={() => onDelete(h.id)}
+                  />
                 </Card>
               </li>
             ))}
@@ -117,6 +80,6 @@ export function NotesPanel({
           )}
         </ScrollArea>
       )}
-    </aside>
+    </div>
   );
 }

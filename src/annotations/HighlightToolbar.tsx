@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isTextEntry } from "@/lib/keys";
 import { cn } from "@/lib/utils";
+import { HIGHLIGHT_FILL } from "./colors";
 import { HIGHLIGHT_COLORS, type HighlightColor } from "./types";
 
 const COLOR_NAMES: Record<HighlightColor, string> = {
@@ -13,13 +14,6 @@ const COLOR_NAMES: Record<HighlightColor, string> = {
   green: "Green",
   pink: "Pink",
   purple: "Purple",
-};
-
-const SWATCH: Record<HighlightColor, string> = {
-  yellow: "bg-highlight-yellow",
-  green: "bg-highlight-green",
-  pink: "bg-highlight-pink",
-  purple: "bg-highlight-purple",
 };
 
 interface HighlightToolbarProps {
@@ -105,7 +99,7 @@ export function HighlightToolbar({
               <span
                 className={cn(
                   "flex size-5 items-center justify-center rounded-full border border-foreground/15",
-                  SWATCH[option],
+                  HIGHLIGHT_FILL[option],
                 )}
               >
                 {option === color && <Check className="size-3" />}

@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { FileText, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   Empty,
   EmptyContent,
@@ -36,6 +37,7 @@ import { affectsTree, loadMarkdownTree, type TreeNode } from "./files/tree";
 import { baseName, joinPath } from "./fs/path";
 import { TauriFileSystem } from "./fs/tauri";
 import { Header } from "./header/Header";
+import { MarginNotes } from "./margin/MarginNotes";
 import { countNotes, extractHeadings } from "./markdown/headings";
 import { classifyLink, resolveImage } from "./markdown/links";
 import { Markdown } from "./markdown/Markdown";
@@ -130,6 +132,8 @@ function App() {
   const [toolbar, setToolbar] = useState<Target | null>(null);
   const [commenting, setCommenting] = useState<Target | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  /** Set when the notes sheet closes for the comment popover, which keeps the focus. */
+  const sheetKeepsFocus = useRef(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   /** The open file's path once it was deleted or moved on disk; its last version stays shown. */
   const [missingPath, setMissingPath] = useState<string | null>(null);
@@ -412,6 +416,9 @@ function App() {
   }
 
   function editCommentFromPanel(id: string) {
+    // The sheet is modal: the popover can't take focus while it's open.
+    sheetKeepsFocus.current = true;
+    setNotesOpen(false);
     const mark = goToHighlight(id);
     if (mark) setCommenting({ type: "highlight", id, anchor: mark });
   }
@@ -509,7 +516,7 @@ function App() {
 
         <div className="flex min-h-0 flex-1">
           <div
-            className="min-w-0 flex-1 overflow-y-auto"
+            className="@container min-w-0 flex-1 overflow-y-auto"
             ref={readerRef}
             // The toolbar is fixed in the window, so it would drift away from its text.
             onScroll={toolbar ? closeToolbar : undefined}
@@ -524,19 +531,36 @@ function App() {
               </p>
             )}
             {doc ? (
-              <article
-                className="markdown-body px-8 py-12"
-                ref={articleRef}
-                onMouseUp={onReaderMouseUp}
-                onClick={onReaderClick}
-              >
-                <Markdown
-                  source={doc.content}
-                  highlights={placed}
-                  resolveImageSrc={(src) => imageSrc(doc, src)}
-                  onLinkClick={(href) => followLink(doc.path, href)}
+              // The margin shows when the reader is at least 56rem (~900px) wide;
+              // below that, the notes sheet lists the comments (DESIGN.md section 5).
+              <div className="mx-auto grid max-w-[calc(var(--reader-measure)+20rem)] @4xl:grid-cols-[minmax(0,1fr)_16rem] @4xl:pr-4">
+                <article
+                  className="markdown-body px-8 py-12"
+                  ref={articleRef}
+                  onMouseUp={onReaderMouseUp}
+                  onClick={onReaderClick}
+                >
+                  <Markdown
+                    source={doc.content}
+                    highlights={placed}
+                    resolveImageSrc={(src) => imageSrc(doc, src)}
+                    onLinkClick={(href) => followLink(doc.path, href)}
+                  />
+                </article>
+                <MarginNotes
+                  className="hidden @4xl:block"
+                  highlights={listed}
+                  article={articleRef}
+                  activeId={activeId}
+                  onSelect={(id, mark) => {
+                    if (annotations.editable) setToolbar({ type: "highlight", id, anchor: mark });
+                  }}
+                  onEditComment={(id, mark) =>
+                    setCommenting({ type: "highlight", id, anchor: mark })
+                  }
+                  onDelete={removeHighlight}
                 />
-              </article>
+              </div>
             ) : (
               <Empty className="h-full">
                 <EmptyHeader>
@@ -564,16 +588,29 @@ function App() {
               </Empty>
             )}
           </div>
-          {doc && notesOpen && (
+        </div>
+        <Sheet open={doc !== null && notesOpen} onOpenChange={setNotesOpen}>
+          <SheetContent
+            className="gap-0 data-[side=right]:w-80"
+            aria-describedby={undefined}
+            onCloseAutoFocus={(event) => {
+              if (sheetKeepsFocus.current) event.preventDefault();
+              sheetKeepsFocus.current = false;
+            }}
+          >
+            <SheetTitle className="sr-only">Notes</SheetTitle>
             <NotesPanel
               highlights={listed}
               orphaned={placement.orphaned}
-              onSelect={goToHighlight}
+              onSelect={(id) => {
+                setNotesOpen(false);
+                goToHighlight(id);
+              }}
               onEditComment={editCommentFromPanel}
               onDelete={removeHighlight}
             />
-          )}
-        </div>
+          </SheetContent>
+        </Sheet>
         {doc && toolbar && (
           <HighlightToolbar
             anchor={toolbar.anchor.getBoundingClientRect()}
