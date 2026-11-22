@@ -1,7 +1,7 @@
 import type { Highlight, HighlightColor } from "../annotations/types";
 import type { TreeNode } from "../files/tree";
 import type { ThemeSetting } from "../theme";
-import type { Heading } from "./headings";
+import type { Heading } from "../markdown/headings";
 
 /** What a command does; CommandPalette maps each one to an action. */
 export type CommandId =
@@ -28,7 +28,7 @@ export interface PaletteGroup {
 export interface PaletteInput {
   /** The open folder's tree, or the single open file. */
   tree: TreeNode[];
-  headings: Heading[];
+  headings: readonly Heading[];
   /** The open file's highlights shown in the reader, in document order. */
   highlights: Highlight[];
   /** Whether a document is open, so document commands make sense. */
@@ -85,10 +85,10 @@ export function buildGroups(input: PaletteInput): PaletteGroup[] {
       heading: "Headings",
       items: input.headings.map((h) => ({
         kind: "heading",
-        id: `heading:${h.offset}`,
+        id: `heading:${h.start}`,
         label: h.text,
         depth: h.depth,
-        offset: h.offset,
+        offset: h.start,
       })),
     },
     { heading: "Files", items: files },

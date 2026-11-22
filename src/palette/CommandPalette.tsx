@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import type { Highlight, HighlightColor } from "../annotations/types";
 import type { TreeNode } from "../files/tree";
 import type { ThemeSetting } from "../theme";
-import { extractHeadings } from "./headings";
+import type { Heading } from "../markdown/headings";
 import { buildGroups, filterGroups, type CommandId, type PaletteItem } from "./items";
 
 const DOT: Record<HighlightColor, string> = {
@@ -29,8 +29,8 @@ interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void;
   /** The open folder's tree, or the single open file. */
   tree: TreeNode[];
-  /** The open document's markdown, for its headings. */
-  source: string | null;
+  /** The open document's headings; null when no document is open. */
+  headings: readonly Heading[] | null;
   /** The open file's highlights shown in the reader, in document order. */
   highlights: Highlight[];
   theme: ThemeSetting;
@@ -49,7 +49,7 @@ export function CommandPalette({
   open,
   onOpenChange,
   tree,
-  source,
+  headings,
   highlights,
   theme,
   onShowFile,
@@ -72,18 +72,19 @@ export function CommandPalette({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onOpenChange]);
 
-  // Headings are parsed only while the palette is open.
-  const headings = useMemo(
-    () => (open && source !== null ? extractHeadings(source) : []),
-    [open, source],
-  );
   const groups = useMemo(
     () =>
       filterGroups(
-        buildGroups({ tree, headings, highlights, hasDocument: source !== null, theme }),
+        buildGroups({
+          tree,
+          headings: headings ?? [],
+          highlights,
+          hasDocument: headings !== null,
+          theme,
+        }),
         query,
       ),
-    [tree, headings, highlights, source, theme, query],
+    [tree, headings, highlights, theme, query],
   );
 
   function changeOpen(next: boolean) {

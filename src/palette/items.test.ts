@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { Highlight } from "../annotations/types";
-import { extractHeadings } from "./headings";
 import { buildGroups, filterGroups, GROUP_LIMIT, type PaletteInput } from "./items";
 
 function highlight(id: string, quote: string, comment: string | null = null): Highlight {
@@ -37,8 +36,8 @@ const input: PaletteInput = {
     { kind: "file", name: "README.md", path: "/v/README.md" },
   ],
   headings: [
-    { depth: 1, text: "Why spacing works", offset: 0 },
-    { depth: 2, text: "Scheduling", offset: 40 },
+    { depth: 1, text: "Why spacing works", id: "why-spacing-works", start: 0 },
+    { depth: 2, text: "Scheduling", id: "scheduling", start: 40 },
   ],
   highlights: [
     highlight("a", "Most loss\nhappens early"),
@@ -50,25 +49,6 @@ const input: PaletteInput = {
 
 const labels = (groups: ReturnType<typeof filterGroups>) =>
   groups.map((g) => [g.heading, g.items.map((i) => i.label)]);
-
-describe("extractHeadings", () => {
-  it("lists headings in order with plain text and source offsets", () => {
-    const source =
-      "# Why *spacing* works\n\ntext\n\n## `Scheduling`\n\n```\n# not a heading\n```\n\n#\n";
-    expect(extractHeadings(source)).toEqual([
-      { depth: 1, text: "Why spacing works", offset: 0 },
-      { depth: 2, text: "Scheduling", offset: source.indexOf("## ") },
-    ]);
-  });
-
-  it("finds setext headings and headings inside blockquotes", () => {
-    const source = "Title\n=====\n\n> ### Quoted\n";
-    expect(extractHeadings(source)).toEqual([
-      { depth: 1, text: "Title", offset: 0 },
-      { depth: 3, text: "Quoted", offset: source.indexOf("###") },
-    ]);
-  });
-});
 
 describe("buildGroups", () => {
   it("groups headings, files, notes and commands in that order", () => {
@@ -132,7 +112,8 @@ describe("filterGroups", () => {
     const items = ["xspacing", "spacing", "a spacing"].map((text, i) => ({
       depth: 1,
       text,
-      offset: i,
+      id: text,
+      start: i,
     }));
     const ranked = filterGroups(buildGroups({ ...input, headings: items }), "spacing");
     expect(ranked[0].items.map((i) => i.label)).toEqual(["spacing", "a spacing", "xspacing"]);
@@ -142,7 +123,8 @@ describe("filterGroups", () => {
     const many = Array.from({ length: GROUP_LIMIT + 10 }, (_, i) => ({
       depth: 2,
       text: `Part ${i}`,
-      offset: i,
+      id: `part-${i}`,
+      start: i,
     }));
     const [headings] = filterGroups(buildGroups({ ...input, headings: many }), "part");
     expect(headings.items).toHaveLength(GROUP_LIMIT);

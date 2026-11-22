@@ -597,7 +597,7 @@ function App() {
           open={paletteOpen}
           onOpenChange={setPaletteOpen}
           tree={workspace?.tree ?? []}
-          source={doc?.content ?? null}
+          headings={doc ? headings : null}
           highlights={listed}
           theme={theme.setting}
           onShowFile={(path) => run(() => showFile(path))}
