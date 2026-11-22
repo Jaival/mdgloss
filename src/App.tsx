@@ -1,10 +1,19 @@
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { appDataDir } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { FileText, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isTextEntry } from "@/lib/keys";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   Empty,
@@ -32,6 +41,10 @@ import { AppDataStore, LocalAnnotationStore, SidecarStore } from "./annotations/
 import type { HighlightColor } from "./annotations/types";
 import { useAnnotations } from "./annotations/useAnnotations";
 import { FileTree } from "./files/FileTree";
+import { FocusChrome } from "./focus/FocusChrome";
+import { focusKeyAction } from "./focus/keys";
+import { useReaderMode, type ReaderMode } from "./focus/mode";
+import { countWords } from "./focus/reading";
 import { reloadFile } from "./files/reload";
 import { affectsTree, loadMarkdownTree, type TreeNode } from "./files/tree";
 import { baseName, joinPath } from "./fs/path";
@@ -129,6 +142,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
   const fonts = useFonts();
+  const { mode, setMode } = useReaderMode();
+  const focus = mode === "focus";
   const [settingsOpen, setSettingsOpen] = useState(false);
   const appUpdate = useUpdate();
   const readerRef = useRef<HTMLDivElement>(null);
@@ -165,6 +180,7 @@ function App() {
       .sort((a, b) => start.get(a.id)! - start.get(b.id)!);
   }, [placed, annotations.highlights]);
   const headings = useMemo(() => extractHeadings(doc?.content ?? ""), [doc?.content]);
+  const words = useMemo(() => countWords(doc?.content ?? ""), [doc?.content]);
   const noteCounts = useMemo(
     () =>
       countNotes(
@@ -427,6 +443,67 @@ function App() {
     if (mark) setCommenting({ type: "highlight", id, anchor: mark });
   }
 
+  /** The block at the top of the reader and its offset, kept across a mode switch. */
+  const readingPlace = useRef<{ block: Element; offset: number } | null>(null);
+
+  /**
+   * The sidebar and margin come and go, so the text reflows: remember the block
+   * at the top of the reader and bring it back after the switch. The toolbar is
+   * placed for the old layout, so it closes.
+   */
+  function switchMode(next: ReaderMode) {
+    if (next === mode) return;
+    setToolbar(null);
+    const root = readerRef.current;
+    const rootTop = root?.getBoundingClientRect().top ?? 0;
+    const block = [...(articleRef.current?.children ?? [])].find(
+      (child) => child.getBoundingClientRect().bottom > rootTop,
+    );
+    readingPlace.current = block
+      ? { block, offset: block.getBoundingClientRect().top - rootTop }
+      : null;
+    setMode(next);
+  }
+
+  useLayoutEffect(() => {
+    const place = readingPlace.current;
+    const root = readerRef.current;
+    readingPlace.current = null;
+    if (!place || !root || !place.block.isConnected) return;
+    const rootTop = root.getBoundingClientRect().top;
+    root.scrollTop += place.block.getBoundingClientRect().top - rootTop - place.offset;
+  }, [mode]);
+
+  const notesShown = doc !== null && notesOpen;
+  const overlayOpen =
+    paletteOpen || notesShown || settingsOpen || toolbar !== null || commenting !== null;
+  const onFocusKey = useEffectEvent((event: KeyboardEvent) => {
+    const action = focusKeyAction(
+      {
+        key: event.key,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        altKey: event.altKey,
+        shiftKey: event.shiftKey,
+        repeat: event.repeat,
+        defaultPrevented: event.defaultPrevented,
+        textEntry: event.isComposing || isTextEntry(event.target),
+      },
+      { focus, overlayOpen, hasDocument: doc !== null },
+    );
+    if (!action) return;
+    event.preventDefault();
+    if (action === "toggle") switchMode(focus ? "annotate" : "focus");
+    else if (action === "leave") switchMode("annotate");
+    else setNotesOpen(true);
+  });
+  useEffect(() => {
+    // Capture runs before the palette, sheet or dialog handle Esc, so the open
+    // overlay still counts and Esc closes it without leaving focus mode.
+    window.addEventListener("keydown", onFocusKey, { capture: true });
+    return () => window.removeEventListener("keydown", onFocusKey, { capture: true });
+  }, []);
+
   function runCommand(command: CommandId) {
     switch (command) {
       case "open-file":
@@ -437,7 +514,8 @@ function App() {
         return setNotesOpen((open) => !open);
       case "open-settings":
         return setSettingsOpen(true);
-      // UI plan step 6: handle the focus-mode command here.
+      case "toggle-focus":
+        return switchMode(focus ? "annotate" : "focus");
       case "theme-system":
       case "theme-light":
       case "theme-dark":
@@ -457,72 +535,77 @@ function App() {
       className="h-dvh min-h-0 overflow-hidden"
       style={{ "--sidebar-width": "260px" } as React.CSSProperties}
     >
-      <Sidebar collapsible="icon">
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Open file" onClick={openFile}>
-                <FileText />
-                <span>Open file</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Open folder" onClick={openFolder}>
-                <FolderOpen />
-                <span>Open folder</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
-        <SidebarContent>
-          {workspace && (
-            <SidebarTabs
-              title={workspace.title}
-              files={
-                workspace.tree.length > 0 ? (
-                  <FileTree
-                    nodes={workspace.tree}
-                    selectedPath={doc?.path ?? null}
-                    onSelect={(path) => run(() => showFile(path))}
-                  />
-                ) : (
-                  <p className="px-2 text-xs text-muted-foreground">
-                    No markdown files in this folder.
-                  </p>
-                )
-              }
-              outline={
-                doc ? (
-                  <Outline headings={headings} counts={noteCounts} scrollRoot={readerRef} />
-                ) : (
-                  <p className="px-2 text-xs text-muted-foreground">No file open.</p>
-                )
-              }
-            />
-          )}
-        </SidebarContent>
-        <SidebarRail />
-      </Sidebar>
+      {!focus && (
+        <Sidebar collapsible="icon">
+          <SidebarHeader>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Open file" onClick={openFile}>
+                  <FileText />
+                  <span>Open file</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Open folder" onClick={openFolder}>
+                  <FolderOpen />
+                  <span>Open folder</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarHeader>
+          <SidebarContent>
+            {workspace && (
+              <SidebarTabs
+                title={workspace.title}
+                files={
+                  workspace.tree.length > 0 ? (
+                    <FileTree
+                      nodes={workspace.tree}
+                      selectedPath={doc?.path ?? null}
+                      onSelect={(path) => run(() => showFile(path))}
+                    />
+                  ) : (
+                    <p className="px-2 text-xs text-muted-foreground">
+                      No markdown files in this folder.
+                    </p>
+                  )
+                }
+                outline={
+                  doc ? (
+                    <Outline headings={headings} counts={noteCounts} scrollRoot={readerRef} />
+                  ) : (
+                    <p className="px-2 text-xs text-muted-foreground">No file open.</p>
+                  )
+                }
+              />
+            )}
+          </SidebarContent>
+          <SidebarRail />
+        </Sidebar>
+      )}
 
       <SidebarInset className="min-w-0">
-        <Header
-          path={doc?.path ?? null}
-          root={workspace?.root ?? null}
-          appStorage={annotations.location === "app"}
-          error={headerError}
-          updateVersion={appUpdate.ready?.version ?? null}
-          onInstallUpdate={() => run(appUpdate.install)}
-          notesOpen={notesOpen}
-          onToggleNotes={() => setNotesOpen((open) => !open)}
-          theme={theme.setting}
-          onThemeChange={theme.setSetting}
-          onOpenSettings={() => setSettingsOpen(true)}
-          highlightCount={listed.length}
-          orphaned={placement.orphaned}
-          onDeleteOrphan={removeHighlight}
-        />
+        {!focus && (
+          <Header
+            path={doc?.path ?? null}
+            root={workspace?.root ?? null}
+            appStorage={annotations.location === "app"}
+            error={headerError}
+            updateVersion={appUpdate.ready?.version ?? null}
+            onInstallUpdate={() => run(appUpdate.install)}
+            notesOpen={notesOpen}
+            onToggleNotes={() => setNotesOpen((open) => !open)}
+            theme={theme.setting}
+            onThemeChange={theme.setSetting}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onEnterFocus={() => switchMode("focus")}
+            highlightCount={listed.length}
+            orphaned={placement.orphaned}
+            onDeleteOrphan={removeHighlight}
+          />
+        )}
 
-        <div className="flex min-h-0 flex-1">
+        <div className="relative flex min-h-0 flex-1">
           <div
             className="@container min-w-0 flex-1 overflow-y-auto"
             ref={readerRef}
@@ -540,10 +623,18 @@ function App() {
             )}
             {doc ? (
               // The margin shows when the reader is at least 56rem (~900px) wide;
-              // below that, the notes sheet lists the comments (DESIGN.md section 5).
-              <div className="mx-auto grid max-w-[calc(var(--reader-measure)+20rem)] @4xl:grid-cols-[minmax(0,1fr)_16rem] @4xl:pr-4">
+              // below that, and in focus mode, the notes sheet lists the comments
+              // (DESIGN.md section 5).
+              <div
+                className={
+                  focus
+                    ? undefined
+                    : "mx-auto grid max-w-[calc(var(--reader-measure)+20rem)] @4xl:grid-cols-[minmax(0,1fr)_16rem] @4xl:pr-4"
+                }
+              >
                 <article
                   className="markdown-body px-8 py-12"
+                  data-focus={focus || undefined}
                   ref={articleRef}
                   onMouseUp={onReaderMouseUp}
                   onClick={onReaderClick}
@@ -555,19 +646,21 @@ function App() {
                     onLinkClick={(href) => followLink(doc.path, href)}
                   />
                 </article>
-                <MarginNotes
-                  className="hidden @4xl:block"
-                  highlights={listed}
-                  article={articleRef}
-                  activeId={activeId}
-                  onSelect={(id, mark) => {
-                    if (annotations.editable) setToolbar({ type: "highlight", id, anchor: mark });
-                  }}
-                  onEditComment={(id, mark) =>
-                    setCommenting({ type: "highlight", id, anchor: mark })
-                  }
-                  onDelete={removeHighlight}
-                />
+                {!focus && (
+                  <MarginNotes
+                    className="hidden @4xl:block"
+                    highlights={listed}
+                    article={articleRef}
+                    activeId={activeId}
+                    onSelect={(id, mark) => {
+                      if (annotations.editable) setToolbar({ type: "highlight", id, anchor: mark });
+                    }}
+                    onEditComment={(id, mark) =>
+                      setCommenting({ type: "highlight", id, anchor: mark })
+                    }
+                    onDelete={removeHighlight}
+                  />
+                )}
               </div>
             ) : (
               <Empty className="h-full">
@@ -596,8 +689,20 @@ function App() {
               </Empty>
             )}
           </div>
+          {focus && (
+            <FocusChrome
+              fileName={doc ? baseName(doc.path) : null}
+              highlights={listed}
+              words={words}
+              error={headerError}
+              scrollRoot={readerRef}
+              article={articleRef}
+              onOpenPalette={() => setPaletteOpen(true)}
+              onOpenNotes={() => setNotesOpen(true)}
+            />
+          )}
         </div>
-        <Sheet open={doc !== null && notesOpen} onOpenChange={setNotesOpen}>
+        <Sheet open={notesShown} onOpenChange={setNotesOpen}>
           <SheetContent
             className="gap-0 data-[side=right]:w-80"
             aria-describedby={undefined}
@@ -645,6 +750,7 @@ function App() {
           headings={doc ? headings : null}
           highlights={listed}
           theme={theme.setting}
+          focus={focus}
           onShowFile={(path) => run(() => showFile(path))}
           onShowHeading={(offset) =>
             articleRef.current

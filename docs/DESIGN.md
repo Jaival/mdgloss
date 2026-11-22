@@ -189,6 +189,31 @@ Reading font size should be user-adjustable (S/M/L) later. That setting only cha
 - Below ~900px (56rem) of reader width, a container query on the reader, the margin is hidden and the notes `Sheet` is the way to the comments; commented highlights show the small comment marker inside the text column again. Below ~640px window width (web demo on phones), the sidebar also becomes a `Sheet`.
 - Spacing follows Tailwind's 4px scale. Prefer `gap-*` on flex/grid over margins.
 
+### Focus mode
+
+```
+┌────────────────────────────────────────────────────────┐
+│▔▔▔▔▔▔▔▔▔▔▔ progress line (2px primary)                  │
+│ (▤ 04-spacing.md  Ctrl K)                          ▕   │
+│                                                    ▕─  │
+│              Document (68ch), centered             ▕   │
+│              highlights stay, no margin            ▕─  │
+│                                                    ▕   │
+│ (38% · 6 min left)                  (▭ 5 notes  N) ▕   │
+└────────────────────────────────────────────────────────┘
+```
+
+- A second mode beside the default (annotate) one, for reading. Switch with the header's `BookOpen` button, `Ctrl/Cmd+.`, or the palette ("Enter focus mode" / "Leave focus mode"). `Esc` leaves it, but only when nothing else is open (palette, popover, sheet, dialog, highlight toolbar): `Esc` closes that first. `src/focus/mode.ts` stores the mode in `localStorage` (`mdgloss.mode`).
+- Hidden: the sidebar, the header and the margin. The document is one centered column; commented highlights show the in-text comment marker, as below 900px.
+- Over the reader (`src/focus/FocusChrome.tsx`), all `rounded-full` pills with a border, translucent `popover` fill and backdrop blur:
+  - Top left: the file name, which opens the palette. With a folder open, the palette is the only way to other files.
+  - Bottom left: progress and time left ("38% · 6 min left", "100% · done" at the end), in `muted-foreground`. Time left is the words after the scroll position at 230 words per minute.
+  - Bottom right: "N notes", which opens the notes `Sheet`. `N` does the same.
+  - Along the top: a 2px `primary` line as wide as the progress.
+  - On the right edge: a 4px `muted` track with a tick in the highlight's color per highlight, at its place in the document. Decorative (`aria-hidden`); the notes pill and palette reach the highlights by keyboard.
+- The maths (word count, progress, time left, tick places, the key rule) is in `src/focus/reading.ts` and `src/focus/keys.ts` with tests; `FocusChrome` only measures the reader on scroll and resize.
+- Highlighting and commenting are the same as in annotate mode: the toolbar and the comment popover.
+
 ## 6. Radius and elevation
 
 - Base radius `--radius: 0.625rem`. Use the derived tokens (`rounded-lg`, `rounded-md`, `rounded-sm`), not raw pixel values.
@@ -208,6 +233,7 @@ Suggested mapping, so icons stay consistent:
 | Comment             | `MessageSquare`              |
 | Bookmark            | `Bookmark` / `BookmarkCheck` |
 | Preview mode        | `BookOpen`                   |
+| Focus mode          | `BookOpen`                   |
 | Edit mode           | `PencilLine`                 |
 | Folder / file       | `Folder` / `FileText`        |
 | Outline             | `ListTree`                   |
@@ -218,7 +244,7 @@ Suggested mapping, so icons stay consistent:
 
 Use shadcn components before writing custom ones. Add with the CLI; don't copy from docs by hand.
 
-**Header.** Sidebar toggle, then a breadcrumb: the folders from the open folder's name down to the file's parent in `text-muted-foreground`, and the file name in `font-medium` (a single file shows only its parent folder; the full path is the `title`). On the right, before the update, notes and theme buttons, two chips (`rounded-full bg-muted text-xs`): "N highlights" with `Highlighter`, and a muted "N not found" with `Unlink`, which opens the "Text not found" list in a `Popover`. Each chip shows only when its count is above zero.
+**Header.** Sidebar toggle, then a breadcrumb: the folders from the open folder's name down to the file's parent in `text-muted-foreground`, and the file name in `font-medium` (a single file shows only its parent folder; the full path is the `title`). On the right, before the update, notes, focus-mode (`BookOpen`), theme and settings buttons, two chips (`rounded-full bg-muted text-xs`): "N highlights" with `Highlighter`, and a muted "N not found" with `Unlink`, which opens the "Text not found" list in a `Popover`. Each chip shows only when its count is above zero.
 
 **Floating highlight toolbar.** Appears above a text selection. `Popover`-styled container, four color swatches, a comment button, a bookmark button. Keyboard: `1`–`4` pick a color, `C` comments, `Esc` dismisses.
 
@@ -230,7 +256,7 @@ Use shadcn components before writing custom ones. Add with the CLI; don't copy f
 
 **Mode switch.** Preview ↔ Edit is a two-option toggle in the toolbar. Edit mode (CodeMirror) uses the same background and mono font tokens so switching doesn't flash.
 
-**Command palette.** `CommandDialog` on `Ctrl/Cmd+K` (`src/palette/`); the same keys close it. Groups in this order, empty groups hidden: **Headings** of the open file (indented by level), **Files** in the open folder (folder path on the right), **Notes** (the comment, or the quote when there is none, with a color dot), **Commands** (open file, open folder, toggle notes, theme with a check on the current one; focus mode joins them in UI plan step 6). Every word typed must appear in the label or its detail; matches at the start of the label rank first. Each group shows 50 items at most. Bookmarks join when they exist.
+**Command palette.** `CommandDialog` on `Ctrl/Cmd+K` (`src/palette/`); the same keys close it. Groups in this order, empty groups hidden: **Headings** of the open file (indented by level), **Files** in the open folder (folder path on the right), **Notes** (the comment, or the quote when there is none, with a color dot), **Commands** (open file, open folder, toggle notes, "Enter focus mode" or "Leave focus mode", settings, theme with a check on the current one). Every word typed must appear in the label or its detail; matches at the start of the label rank first. Each group shows 50 items at most. Bookmarks join when they exist.
 
 **Empty states.** Short sentence plus one action, or two when the sentence offers a choice (primary first, the other `outline`). Example: "Nothing open." `[Open folder]` `[Open file]`.
 
@@ -254,7 +280,7 @@ Use shadcn components before writing custom ones. Add with the CLI; don't copy f
 - In Tauri, match the window title bar to `background` on theme change so there's no light bar over a dark app.
 - **Sepia** is a light theme on warm paper. The `.sepia` block in `src/index.css` overrides only surfaces, text and lines: `background`, `foreground`, `card`, `popover`, `secondary`, `muted`, `accent` (with their `-foreground`), `border`, `input`, and the sidebar surface tokens. Primary, ring, destructive and charts stay light. It also raises the four highlight colors (the light ones fade into the paper), and `markdown.css` darkens two syntax colors. Don't fork components for it, and don't write `sepia:` overrides.
 - Sepia contrast (WCAG): `foreground` on `background` 12.5:1, on `muted` 11:1; `muted-foreground` on `muted` 4.7:1; links on `background` 4.6:1; every syntax color on the code fill ≥ 4.7:1. Recheck these when a sepia token changes.
-- Focus mode is independent of the theme: any theme works in either mode.
+- Focus mode is independent of the theme: any theme works in either mode. Its pills and track use only the theme tokens.
 
 ## 11. Accessibility
 

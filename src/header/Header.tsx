@@ -46,6 +46,7 @@ interface HeaderProps {
   theme: ThemeSetting;
   onThemeChange: (setting: ThemeSetting) => void;
   onOpenSettings: () => void;
+  onEnterFocus: () => void;
   /** Highlights shown in the reader. */
   highlightCount: number;
   /** Highlights whose text couldn't be found in the file. */
@@ -61,8 +62,8 @@ const CHIP =
 
 /**
  * The reader's header (docs/DESIGN.md sections 5 and 8): sidebar toggle,
- * breadcrumb, highlight and orphan chips, then the update, notes and theme
- * buttons.
+ * breadcrumb, highlight and orphan chips, then the update, notes, focus-mode,
+ * theme and settings buttons.
  */
 export function Header({
   path,
@@ -76,6 +77,7 @@ export function Header({
   theme,
   onThemeChange,
   onOpenSettings,
+  onEnterFocus,
   highlightCount,
   orphaned,
   onDeleteOrphan,
@@ -199,6 +201,20 @@ export function Header({
           <TooltipContent>Toggle notes</TooltipContent>
         </Tooltip>
       )}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" aria-label="Enter focus mode" onClick={onEnterFocus}>
+            <BookOpen />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          Focus mode{" "}
+          <KbdGroup>
+            <Kbd>Ctrl</Kbd>
+            <Kbd>.</Kbd>
+          </KbdGroup>
+        </TooltipContent>
+      </Tooltip>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" aria-label="Theme">

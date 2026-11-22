@@ -352,9 +352,10 @@
 }
 
 /* Where the reader is wide enough for margin notes (App.tsx, the reader's @4xl),
-   the comment card beside the text is the signal instead. */
+   the comment card beside the text is the signal instead. Focus mode has no
+   margin, so the marker stays. */
 @container (min-width: 56rem) {
-  .markdown-body mark.highlight[data-comment]::before {
+  .markdown-body:not([data-focus]) mark.highlight[data-comment]::before {
     display: none;
   }
 }
