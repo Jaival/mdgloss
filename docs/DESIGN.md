@@ -211,6 +211,8 @@ Suggested mapping, so icons stay consistent:
 
 Use shadcn components before writing custom ones. Add with the CLI; don't copy from docs by hand.
 
+**Header.** Sidebar toggle, then a breadcrumb: the folders from the open folder's name down to the file's parent in `text-muted-foreground`, and the file name in `font-medium` (a single file shows only its parent folder; the full path is the `title`). After it, two chips (`rounded-full bg-muted text-xs`): "N highlights" with `Highlighter`, and "N not found" with `Unlink`, which opens the "Text not found" list in a `Popover`. Each chip shows only when its count is above zero. Update, notes and theme buttons sit on the right.
+
 **Floating highlight toolbar.** Appears above a text selection. `Popover`-styled container, four color swatches, a comment button, a bookmark button. Keyboard: `1`–`4` pick a color, `C` comments, `Esc` dismisses.
 
 **Comment card.** `Card` in the notes panel: quoted snippet (`text-xs text-muted-foreground`, left border in the highlight's color), comment body, timestamp, overflow menu (edit/delete). Selecting a card scrolls the document to the anchor and pulses the highlight once.
