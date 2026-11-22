@@ -54,7 +54,7 @@ const THEME_ICONS = { system: Monitor, light: Sun, dark: Moon };
 
 /** A small rounded label in the header (docs/DESIGN.md section 8). */
 const CHIP =
-  "flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground [&_svg]:size-3.5";
+  "flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs [&_svg]:size-3.5";
 
 /**
  * The reader's header (docs/DESIGN.md sections 5 and 8): sidebar toggle,
@@ -129,6 +129,12 @@ export function Header({
           </TooltipContent>
         </Tooltip>
       )}
+      {error && (
+        <span className="min-w-0 truncate text-sm text-destructive" role="alert" title={error}>
+          {error}
+        </span>
+      )}
+      <span className="ml-auto" />
       {path && highlightCount > 0 && (
         <span className={CHIP}>
           <Highlighter aria-hidden />
@@ -140,19 +146,26 @@ export function Header({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className={`${CHIP} outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring`}
+              className={`${CHIP} text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring`}
             >
               <Unlink aria-hidden />
               {orphaned.length} not found
             </button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-80 gap-0 rounded-md p-0">
-            <h2 className="flex items-center gap-1.5 px-4 pt-3 pb-1 text-sm font-medium">
+          <PopoverContent
+            align="end"
+            aria-labelledby="orphans-title"
+            className="w-80 gap-0 rounded-md p-0"
+          >
+            <h2
+              id="orphans-title"
+              className="flex items-center gap-1.5 px-4 pt-3 pb-1 text-sm font-medium"
+            >
               <Unlink className="size-4 text-muted-foreground" />
               Text not found
               <span className="text-muted-foreground">{orphaned.length}</span>
             </h2>
-            <ScrollArea className="max-h-96">
+            <ScrollArea className="[&>[data-slot=scroll-area-viewport]]:max-h-96">
               <div className="px-3 pb-3">
                 <OrphanList orphaned={orphaned} onDelete={onDeleteOrphan} />
               </div>
@@ -160,12 +173,6 @@ export function Header({
           </PopoverContent>
         </Popover>
       )}
-      {error && (
-        <span className="min-w-0 truncate text-sm text-destructive" role="alert" title={error}>
-          {error}
-        </span>
-      )}
-      <span className="ml-auto" />
       {updateVersion && (
         <Button variant="outline" size="sm" className="shrink-0" onClick={onInstallUpdate}>
           <Download data-icon="inline-start" />

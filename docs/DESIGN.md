@@ -211,7 +211,7 @@ Suggested mapping, so icons stay consistent:
 
 Use shadcn components before writing custom ones. Add with the CLI; don't copy from docs by hand.
 
-**Header.** Sidebar toggle, then a breadcrumb: the folders from the open folder's name down to the file's parent in `text-muted-foreground`, and the file name in `font-medium` (a single file shows only its parent folder; the full path is the `title`). After it, two chips (`rounded-full bg-muted text-xs`): "N highlights" with `Highlighter`, and "N not found" with `Unlink`, which opens the "Text not found" list in a `Popover`. Each chip shows only when its count is above zero. Update, notes and theme buttons sit on the right.
+**Header.** Sidebar toggle, then a breadcrumb: the folders from the open folder's name down to the file's parent in `text-muted-foreground`, and the file name in `font-medium` (a single file shows only its parent folder; the full path is the `title`). On the right, before the update, notes and theme buttons, two chips (`rounded-full bg-muted text-xs`): "N highlights" with `Highlighter`, and a muted "N not found" with `Unlink`, which opens the "Text not found" list in a `Popover`. Each chip shows only when its count is above zero.
 
 **Floating highlight toolbar.** Appears above a text selection. `Popover`-styled container, four color swatches, a comment button, a bookmark button. Keyboard: `1`–`4` pick a color, `C` comments, `Esc` dismisses.
 
