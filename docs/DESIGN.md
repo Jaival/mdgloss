@@ -176,7 +176,7 @@ Reading font size should be user-adjustable (S/M/L) later. That setting only cha
 ```
 
 - Shell is `h-dvh overflow-hidden`; each pane scrolls on its own (`ScrollArea`).
-- Left sidebar: shadcn `Sidebar`, collapsible to icons. Tabs for Files / Outline / Bookmarks.
+- Left sidebar: shadcn `Sidebar`, collapsible to icons. `Tabs` for Files / Outline (Bookmarks later), hidden when collapsed. Files holds the folder tree. Outline lists the open file's headings, indented by depth, with the number of highlights in each heading's section (up to the next heading) as a badge. The heading in view is marked (`isActive` plus a 2px `primary` inset bar); a click scrolls the reader to it. Heading extraction lives in `src/markdown/headings.ts` so the command palette can list the same headings.
 - Right notes panel: closed by default, opens on first annotation or with a shortcut.
 - Document column is centered with generous side padding (`px-8 py-12` desktop).
 - Below ~900px window width, the notes panel becomes a `Sheet`; below ~640px (web demo on phones), the sidebar also becomes a `Sheet`.
