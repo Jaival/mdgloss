@@ -128,6 +128,7 @@ function score(item: PaletteItem, words: string[]): number | undefined {
 
 /**
  * The groups filtered by a query, best matches first, each cut to GROUP_LIMIT.
+ * With an empty query the headings are never cut: they are the open file's outline.
  * An empty query keeps everything in its original order. Empty groups are dropped.
  */
 export function filterGroups(groups: PaletteGroup[], query: string): PaletteGroup[] {
@@ -143,6 +144,9 @@ export function filterGroups(groups: PaletteGroup[], query: string): PaletteGrou
             })
             .sort((a, b) => a.s - b.s || a.index - b.index)
             .map(({ item }) => item);
-    return items.length > 0 ? [{ heading: group.heading, items: items.slice(0, GROUP_LIMIT) }] : [];
+    const keepAll = words.length === 0 && group.heading === "Headings";
+    return items.length > 0
+      ? [{ heading: group.heading, items: keepAll ? items : items.slice(0, GROUP_LIMIT) }]
+      : [];
   });
 }

@@ -146,5 +146,8 @@ describe("filterGroups", () => {
     }));
     const [headings] = filterGroups(buildGroups({ ...input, headings: many }), "part");
     expect(headings.items).toHaveLength(GROUP_LIMIT);
+    // The full outline stays reachable without typing.
+    const [all] = filterGroups(buildGroups({ ...input, headings: many }), "");
+    expect(all.items).toHaveLength(many.length);
   });
 });

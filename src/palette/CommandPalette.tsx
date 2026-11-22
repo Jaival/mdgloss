@@ -9,7 +9,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { isPaletteShortcut } from "@/lib/keys";
+import { isPaletteShortcut, isTextEntry } from "@/lib/keys";
 import { cn } from "@/lib/utils";
 import type { Highlight, HighlightColor } from "../annotations/types";
 import type { TreeNode } from "../files/tree";
@@ -61,8 +61,11 @@ export function CommandPalette({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!isPaletteShortcut(event)) return;
+      if (!isPaletteShortcut(event) || event.repeat) return;
+      // Leaving a text field (the comment popover) would close and save it.
+      if (!open && isTextEntry(event.target)) return;
       event.preventDefault();
+      if (open) setQuery("");
       onOpenChange(!open);
     };
     window.addEventListener("keydown", onKeyDown);
