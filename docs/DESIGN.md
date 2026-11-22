@@ -243,10 +243,12 @@ Use shadcn components before writing custom ones. Add with the CLI; don't copy f
 
 ## 10. Theming
 
-- Light and dark both ship at launch. Default follows the OS.
-- Theme is toggled by the `.dark` class on `<html>`.
+- Settings: System (default, follows the OS), Light, Dark, Sepia. Pick one in the header theme menu or the palette ("Theme: …"). `src/theme.ts` stores the setting in `localStorage` (`mdgloss.theme`).
+- Theme is a class on `<html>`: `.dark` or `.sepia`; light has none. `color-scheme` is `dark` only for dark, so sepia keeps light native controls.
 - In Tauri, match the window title bar to `background` on theme change so there's no light bar over a dark app.
-- A future "sepia" reading theme should be added as a third class that only overrides `background`, `foreground`, `muted`, and `border`. Don't fork components for it.
+- **Sepia** is a light theme on warm paper. The `.sepia` block in `src/index.css` overrides only surfaces, text and lines: `background`, `foreground`, `card`, `popover`, `secondary`, `muted`, `accent` (with their `-foreground`), `border`, `input`, and the sidebar surface tokens. Primary, ring, destructive and charts stay light. It also raises the four highlight colors (the light ones fade into the paper), and `markdown.css` darkens two syntax colors. Don't fork components for it, and don't write `sepia:` overrides.
+- Sepia contrast (WCAG): `foreground` on `background` 12.5:1, on `muted` 11:1; `muted-foreground` on `muted` 4.7:1; links on `background` 4.6:1; every syntax color on the code fill ≥ 4.7:1. Recheck these when a sepia token changes.
+- Focus mode is independent of the theme: any theme works in either mode.
 
 ## 11. Accessibility
 

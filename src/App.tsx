@@ -435,6 +435,7 @@ function App() {
       case "theme-system":
       case "theme-light":
       case "theme-dark":
+      case "theme-sepia":
         return theme.setSetting(command.slice("theme-".length) as ThemeSetting);
     }
   }
