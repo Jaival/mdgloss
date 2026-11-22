@@ -165,21 +165,22 @@ Reading font size should be user-adjustable (S/M/L) later. That setting only cha
 ## 5. Layout
 
 ```
-┌──────────┬────────────────────────────────┬────────────┐
-│ Sidebar  │  Toolbar (file path · mode)    │            │
-│ Files    ├────────────────────────────────┤  Notes     │
-│ Outline  │                                │  panel     │
-│ Bookmarks│      Document (68ch)           │ (comments, │
-│          │                                │ highlights)│
-│ 260px    │      centered, own scroll      │  320px     │
+┌──────────┬─────────────────────────────────────────────┐
+│ Sidebar  │  Header (breadcrumb · chips · actions)      │
+│ Files    ├────────────────────────────────┬────────────┤
+│ Outline  │                                │ ● card     │
+│ Bookmarks│      Document (68ch)           │   card     │
+│          │                                │ ●  margin  │
+│ 260px    │   centered, scrolls with →     │  16rem     │
 └──────────┴────────────────────────────────┴────────────┘
 ```
 
 - Shell is `h-dvh overflow-hidden`; each pane scrolls on its own (`ScrollArea`).
 - Left sidebar: shadcn `Sidebar`, collapsible to icons. `Tabs` for Files / Outline (Bookmarks later), hidden when collapsed. Files holds the folder tree. Outline lists the open file's headings, indented by depth, with the number of highlights in each heading's section (up to the next heading) as a badge. The heading in view is marked (`isActive` plus a 2px `primary` inset bar); a click scrolls the reader to it. Heading extraction lives in `src/markdown/headings.ts` so the command palette can list the same headings.
-- Right notes panel: closed by default, opens on first annotation or with a shortcut.
+- Right margin (`src/margin/`): scrolls with the document. A comment card sits level with the first `mark` of its highlight; a highlight with no comment gets a dot in a narrow gutter at the margin's left edge instead. Cards (and dots) that would overlap are pushed down, 8px apart (2px for dots). The maths is `layoutMargin` in `src/margin/layout.ts`; `MarginNotes` measures the marks and boxes and re-lays them when the document changes and on any resize of the article, the margin or a card (window, sidebar, font or size, images, a card expanding).
+- Notes panel: the full list (with "Text not found") in a right-hand `Sheet` (320px), opened at any width by the header's notes button or the palette. Picking a card or "Edit comment" closes the sheet.
 - Document column is centered with generous side padding (`px-8 py-12` desktop).
-- Below ~900px window width, the notes panel becomes a `Sheet`; below ~640px (web demo on phones), the sidebar also becomes a `Sheet`.
+- Below ~900px (56rem) of reader width, a container query on the reader, the margin is hidden and the notes `Sheet` is the way to the comments; commented highlights show the small comment marker inside the text column again. Below ~640px window width (web demo on phones), the sidebar also becomes a `Sheet`.
 - Spacing follows Tailwind's 4px scale. Prefer `gap-*` on flex/grid over margins.
 
 ## 6. Radius and elevation
@@ -215,7 +216,9 @@ Use shadcn components before writing custom ones. Add with the CLI; don't copy f
 
 **Floating highlight toolbar.** Appears above a text selection. `Popover`-styled container, four color swatches, a comment button, a bookmark button. Keyboard: `1`–`4` pick a color, `C` comments, `Esc` dismisses.
 
-**Comment card.** `Card` in the notes panel: quoted snippet (`text-xs text-muted-foreground`, left border in the highlight's color), comment body, timestamp, overflow menu (edit/delete). Selecting a card scrolls the document to the anchor and pulses the highlight once.
+**Comment card.** In the notes panel: a `Card` with the quoted snippet (`text-xs text-muted-foreground`, left border in the highlight's color), comment body, timestamp, overflow menu (edit/delete). Selecting it scrolls the document to the anchor and pulses the highlight once.
+
+**Margin card.** In the margin: no quote (the highlight is beside it), a 3px left border in the highlight's color, the comment clamped to 4 lines, the date, and the same overflow menu. A click expands or clamps the comment. The highlight being edited rings its card (or dot) in `primary`. A margin dot (`size-2`, the highlight's color) opens the highlight toolbar on its highlight.
 
 **Orphaned annotations.** Shown in their own collapsible section at the bottom of the notes panel with the `Unlink` icon and a `muted` background. Never shown as errors; the text just moved.
 
