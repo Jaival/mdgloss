@@ -15,9 +15,6 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -39,10 +36,13 @@ import { affectsTree, loadMarkdownTree, type TreeNode } from "./files/tree";
 import { baseName, joinPath } from "./fs/path";
 import { TauriFileSystem } from "./fs/tauri";
 import { Header } from "./header/Header";
+import { countNotes, extractHeadings } from "./markdown/headings";
 import { classifyLink, resolveImage } from "./markdown/links";
 import { Markdown } from "./markdown/Markdown";
 import { imageSources } from "./markdown/pipeline";
 import { toSourceSelection, type SourceSelection } from "./selection/sourceSelection";
+import { Outline } from "./sidebar/Outline";
+import { SidebarTabs } from "./sidebar/SidebarTabs";
 import { useTheme } from "./theme";
 import { useUpdate } from "./updates";
 import "./markdown/markdown.css";
@@ -153,6 +153,15 @@ function App() {
       .filter((h) => start.has(h.id))
       .sort((a, b) => start.get(a.id)! - start.get(b.id)!);
   }, [placed, annotations.highlights]);
+  const headings = useMemo(() => extractHeadings(doc?.content ?? ""), [doc?.content]);
+  const noteCounts = useMemo(
+    () =>
+      countNotes(
+        headings,
+        placement.placed.map((h) => h.start),
+      ),
+    [headings, placement],
+  );
 
   // Start each newly opened file at the top.
   useEffect(() => {
@@ -434,10 +443,10 @@ function App() {
         </SidebarHeader>
         <SidebarContent>
           {workspace && (
-            <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-              <SidebarGroupLabel>{workspace.title}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                {workspace.tree.length > 0 ? (
+            <SidebarTabs
+              title={workspace.title}
+              files={
+                workspace.tree.length > 0 ? (
                   <FileTree
                     nodes={workspace.tree}
                     selectedPath={doc?.path ?? null}
@@ -447,9 +456,16 @@ function App() {
                   <p className="px-2 text-xs text-muted-foreground">
                     No markdown files in this folder.
                   </p>
-                )}
-              </SidebarGroupContent>
-            </SidebarGroup>
+                )
+              }
+              outline={
+                doc ? (
+                  <Outline headings={headings} counts={noteCounts} scrollRoot={readerRef} />
+                ) : (
+                  <p className="px-2 text-xs text-muted-foreground">No file open.</p>
+                )
+              }
+            />
           )}
         </SidebarContent>
         <SidebarRail />
