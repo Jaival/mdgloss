@@ -226,6 +226,12 @@
   --hl-deletion: #ffdcd7;
 }
 
+/* Sepia keeps the light palette; these two drop below 4.5:1 on its darker code fill. */
+.sepia {
+  --hl-keyword: #b31d28;
+  --hl-title: #6f42c1;
+}
+
 .hljs-keyword,
 .hljs-doctag,
 .hljs-meta .hljs-keyword,

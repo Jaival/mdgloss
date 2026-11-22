@@ -5,7 +5,13 @@ import type { Heading } from "../markdown/headings";
 
 /** What a command does; CommandPalette maps each one to an action. */
 export type CommandId =
-  "open-file" | "open-folder" | "toggle-notes" | "theme-system" | "theme-light" | "theme-dark";
+  | "open-file"
+  | "open-folder"
+  | "toggle-notes"
+  | "theme-system"
+  | "theme-light"
+  | "theme-dark"
+  | "theme-sepia";
 
 export type PaletteItem =
   | { kind: "heading"; id: string; label: string; depth: number; offset: number }
@@ -73,6 +79,7 @@ function commands({ hasDocument, theme }: PaletteInput): PaletteItem[] {
     command("theme-system", "Theme: System", theme === "system"),
     command("theme-light", "Theme: Light", theme === "light"),
     command("theme-dark", "Theme: Dark", theme === "dark"),
+    command("theme-sepia", "Theme: Sepia", theme === "sepia"),
   ];
 }
 

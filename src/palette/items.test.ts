@@ -66,6 +66,7 @@ describe("buildGroups", () => {
           "Theme: System",
           "Theme: Light",
           "Theme: Dark",
+          "Theme: Sepia",
         ],
       ],
     ]);
@@ -88,6 +89,13 @@ describe("buildGroups", () => {
       "Theme: Dark",
     ]);
   });
+
+  it("checks sepia when it is the setting", () => {
+    const commands = buildGroups({ ...input, theme: "sepia" })[3].items;
+    expect(commands.filter((c) => c.kind === "command" && c.checked).map((c) => c.label)).toEqual([
+      "Theme: Sepia",
+    ]);
+  });
 });
 
 describe("filterGroups", () => {
@@ -100,6 +108,7 @@ describe("filterGroups", () => {
   it("drops groups with no match and needs every word", () => {
     expect(labels(filterGroups(groups, "sched"))).toEqual([["Headings", ["Scheduling"]]]);
     expect(labels(filterGroups(groups, "theme li"))).toEqual([["Commands", ["Theme: Light"]]]);
+    expect(labels(filterGroups(groups, "sepia"))).toEqual([["Commands", ["Theme: Sepia"]]]);
     expect(filterGroups(groups, "zzz")).toEqual([]);
   });
 

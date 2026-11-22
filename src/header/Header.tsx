@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Download,
   HardDrive,
   Highlighter,
@@ -50,7 +51,7 @@ interface HeaderProps {
   onDeleteOrphan: (id: string) => void;
 }
 
-const THEME_ICONS = { system: Monitor, light: Sun, dark: Moon };
+const THEME_ICONS = { system: Monitor, light: Sun, dark: Moon, sepia: BookOpen };
 
 /** A small rounded label in the header (docs/DESIGN.md section 8). */
 const CHIP =
@@ -218,6 +219,10 @@ export function Header({
             <DropdownMenuRadioItem value="dark">
               <Moon />
               Dark
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="sepia">
+              <BookOpen />
+              Sepia
             </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
