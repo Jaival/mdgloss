@@ -15,6 +15,14 @@
   --highlight-purple: oklch(0.82 0.1 300 / 45%);
   /* Link text in the reader. Dark --primary is a fill colour, too dim for text. */
   --link: var(--primary);
+
+  /* Reader tokens (docs/DESIGN.md section 4). The reading view in markdown.css reads
+     only these, so a font swap or an S/M/L size setting is one edit here. */
+  --font-reader: "Manrope Variable", sans-serif;
+  --font-reader-heading: "Figtree Variable", sans-serif;
+  --reader-size: 17px;
+  /* Line length. ch resolves against the reader font size where it is used. */
+  --reader-measure: 68ch;
 }
 
 .dark {
