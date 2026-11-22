@@ -35,7 +35,7 @@ Scheduled 21 November for the v0.1.0 alpha, weeks 8 to 10 (23 November to 13 Dec
 5. **Command palette.** `Ctrl/Cmd+K`: files, headings, notes, and commands (theme, mode).
 6. **Focus mode.** Mode state and switch, hidden chrome, pills, progress line, highlight ticks, notes `Sheet`.
 7. **Sepia theme.** Third theme class overriding `background`, `foreground`, `muted`, `border`.
-8. **Fonts.** Bundle the supplied fonts and point the tokens at them. Blocked on the fonts.
+8. **Fonts.** Editor (mono) and interface (sans) font pickers in Settings, all fonts bundled (DESIGN.md section 4).
 9. **Docs.** Update DESIGN.md sections 4, 5, 8 and 10 as each step lands, not at the end.
 
 Steps 1 to 3 and 5 are independent of each other. Step 6 needs 4 (the `Sheet` fallback) and 5 (the palette is its only navigation).
@@ -48,7 +48,7 @@ Steps 1 to 3 and 5 are independent of each other. Step 6 needs 4 (the `Sheet` fa
 
 ## Open decisions
 
-- Whether the serif reading font belongs to focus mode only or is a separate reader setting. Decide when the fonts arrive.
+- Closed 22 November: no serif reading font. The reader uses the interface font; `--font-reader` stays as the seam if that changes.
 - Mockup D (review desk across a folder) is not planned. Revisit after export exists.
 
 ## Closes from HANDOFF.md

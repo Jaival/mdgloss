@@ -63,6 +63,7 @@ describe("buildGroups", () => {
           "Open file…",
           "Open folder…",
           "Toggle notes",
+          "Settings",
           "Theme: System",
           "Theme: Light",
           "Theme: Dark",

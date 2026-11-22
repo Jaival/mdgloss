@@ -45,6 +45,8 @@ import { imageSources } from "./markdown/pipeline";
 import { CommandPalette } from "./palette/CommandPalette";
 import type { CommandId } from "./palette/items";
 import { toSourceSelection, type SourceSelection } from "./selection/sourceSelection";
+import { useFonts } from "./fonts/useFonts";
+import { SettingsDialog } from "./settings/SettingsDialog";
 import { Outline } from "./sidebar/Outline";
 import { SidebarTabs } from "./sidebar/SidebarTabs";
 import { useTheme, type ThemeSetting } from "./theme";
@@ -126,6 +128,8 @@ function App() {
   const [doc, setDoc] = useState<OpenDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
+  const fonts = useFonts();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const appUpdate = useUpdate();
   const readerRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLElement>(null);
@@ -431,6 +435,8 @@ function App() {
         return openFolder();
       case "toggle-notes":
         return setNotesOpen((open) => !open);
+      case "open-settings":
+        return setSettingsOpen(true);
       // UI plan step 6: handle the focus-mode command here.
       case "theme-system":
       case "theme-light":
@@ -510,6 +516,7 @@ function App() {
           onToggleNotes={() => setNotesOpen((open) => !open)}
           theme={theme.setting}
           onThemeChange={theme.setSetting}
+          onOpenSettings={() => setSettingsOpen(true)}
           highlightCount={listed.length}
           orphaned={placement.orphaned}
           onDeleteOrphan={removeHighlight}
@@ -646,6 +653,12 @@ function App() {
           }
           onShowHighlight={goToHighlight}
           onCommand={runCommand}
+        />
+        <SettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          fonts={fonts.fonts}
+          onFontChange={fonts.setFont}
         />
       </SidebarInset>
     </SidebarProvider>
