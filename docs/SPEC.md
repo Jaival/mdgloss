@@ -224,7 +224,7 @@ Measured on 13 July 2027, three months after launch, in this order of importance
 
 ### The January gate
 
-At the end of week 17 (31 January 2027), answer one question honestly: did I use the app for my own reading on most days in January? A script in `scripts/` answers it from the sidecars, by counting the January days on which an annotation was created or updated. The gate passes at 20 of 31 days. If not, stop building features. Write down why, and decide whether to fix the reason, change the idea or shelve it. Packaging and launch only start after a yes.
+At the end of week 17 (31 January 2027), answer one question honestly: did I use the app for my own reading on most days in January? A script, `bun run gate january` ([how to run it](DOGFOODING.md#checking-the-gates)), answers it from the sidecars, by counting the January days on which an annotation was created or updated. The gate passes at 20 of 31 days. If not, stop building features. Write down why, and decide whether to fix the reason, change the idea or shelve it. Packaging and launch only start after a yes.
 
 A smaller check comes first, on Sunday 13 December (end of week 10): did I use the app on at least 3 days a week in weeks 7 to 10? The same script answers it for those weeks, so it is written before then. If not, find out why before building bookmarks.
 
