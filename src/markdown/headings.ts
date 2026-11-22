@@ -33,19 +33,15 @@ function textOf(node: ElementContent): string {
   return node.type === "element" ? node.children.map(textOf).join("") : "";
 }
 
-/** Every heading in the markdown, in document order. */
+/** Every heading in the markdown with text, in document order. */
 export function extractHeadings(source: string): Heading[] {
   const headings: Heading[] = [];
   visit(processor.runSync(processor.parse(source), source), "element", (node: Element) => {
     const depth = HEADING.exec(node.tagName)?.[1];
     const start = node.position?.start.offset;
     if (!depth || start === undefined || typeof node.properties.id !== "string") return;
-    headings.push({
-      depth: Number(depth),
-      text: node.children.map(textOf).join("").trim(),
-      id: node.properties.id,
-      start,
-    });
+    const text = node.children.map(textOf).join("").replace(/\s+/g, " ").trim();
+    if (text) headings.push({ depth: Number(depth), text, id: node.properties.id, start });
   });
   return headings;
 }

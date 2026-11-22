@@ -221,7 +221,7 @@ Use shadcn components before writing custom ones. Add with the CLI; don't copy f
 
 **Mode switch.** Preview ↔ Edit is a two-option toggle in the toolbar. Edit mode (CodeMirror) uses the same background and mono font tokens so switching doesn't flash.
 
-**Command palette.** `Command` dialog on `Ctrl/Cmd+K` for open file, jump to heading, jump to bookmark.
+**Command palette.** `CommandDialog` on `Ctrl/Cmd+K` (`src/palette/`); the same keys close it. Groups in this order, empty groups hidden: **Headings** of the open file (indented by level), **Files** in the open folder (folder path on the right), **Notes** (the comment, or the quote when there is none, with a color dot), **Commands** (open file, open folder, toggle notes, theme with a check on the current one; focus mode joins them in UI plan step 6). Every word typed must appear in the label or its detail; matches at the start of the label rank first. Each group shows 50 items at most. Bookmarks join when they exist.
 
 **Empty states.** Short sentence plus one action, or two when the sentence offers a choice (primary first, the other `outline`). Example: "Nothing open." `[Open folder]` `[Open file]`.
 

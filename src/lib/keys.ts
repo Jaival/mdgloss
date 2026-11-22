@@ -11,3 +11,13 @@ export function isTextEntry(target: EventTarget | null): boolean {
     target.isContentEditable
   );
 }
+
+/** Ctrl+K, or Cmd+K on macOS: opens and closes the command palette. */
+export function isPaletteShortcut(event: KeyboardEvent): boolean {
+  return (
+    (event.ctrlKey || event.metaKey) &&
+    !event.altKey &&
+    !event.shiftKey &&
+    event.key.toLowerCase() === "k"
+  );
+}

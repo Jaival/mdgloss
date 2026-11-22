@@ -40,10 +40,12 @@ import { countNotes, extractHeadings } from "./markdown/headings";
 import { classifyLink, resolveImage } from "./markdown/links";
 import { Markdown } from "./markdown/Markdown";
 import { imageSources } from "./markdown/pipeline";
+import { CommandPalette } from "./palette/CommandPalette";
+import type { CommandId } from "./palette/items";
 import { toSourceSelection, type SourceSelection } from "./selection/sourceSelection";
 import { Outline } from "./sidebar/Outline";
 import { SidebarTabs } from "./sidebar/SidebarTabs";
-import { useTheme } from "./theme";
+import { useTheme, type ThemeSetting } from "./theme";
 import { useUpdate } from "./updates";
 import "./markdown/markdown.css";
 
@@ -128,6 +130,7 @@ function App() {
   const [toolbar, setToolbar] = useState<Target | null>(null);
   const [commenting, setCommenting] = useState<Target | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   /** The open file's path once it was deleted or moved on disk; its last version stays shown. */
   const [missingPath, setMissingPath] = useState<string | null>(null);
   const missing = doc !== null && missingPath === doc.path;
@@ -413,6 +416,22 @@ function App() {
     if (mark) setCommenting({ type: "highlight", id, anchor: mark });
   }
 
+  function runCommand(command: CommandId) {
+    switch (command) {
+      case "open-file":
+        return openFile();
+      case "open-folder":
+        return openFolder();
+      case "toggle-notes":
+        return setNotesOpen((open) => !open);
+      // UI plan step 6: handle the focus-mode command here.
+      case "theme-system":
+      case "theme-light":
+      case "theme-dark":
+        return theme.setSetting(command.slice("theme-".length) as ThemeSetting);
+    }
+  }
+
   const edited =
     editing?.type === "highlight"
       ? annotations.highlights.find((h) => h.id === editing.id)
@@ -574,6 +593,22 @@ function App() {
             onCancel={() => setCommenting(null)}
           />
         )}
+        <CommandPalette
+          open={paletteOpen}
+          onOpenChange={setPaletteOpen}
+          tree={workspace?.tree ?? []}
+          headings={doc ? headings : null}
+          highlights={listed}
+          theme={theme.setting}
+          onShowFile={(path) => run(() => showFile(path))}
+          onShowHeading={(offset) =>
+            articleRef.current
+              ?.querySelector(`:is(h1, h2, h3, h4, h5, h6)[data-source-start="${offset}"]`)
+              ?.scrollIntoView()
+          }
+          onShowHighlight={goToHighlight}
+          onCommand={runCommand}
+        />
       </SidebarInset>
     </SidebarProvider>
   );

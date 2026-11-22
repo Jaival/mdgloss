@@ -32,6 +32,14 @@ describe("extractHeadings", () => {
     for (const id of ids) expect(html).toContain(`id="${id}"`);
   });
 
+  it("finds headings in blockquotes and leaves out empty ones", () => {
+    const source = "# One\n\n> ### Quoted\n\n#\n";
+    expect(extractHeadings(source).map((h) => [h.text, h.start])).toEqual([
+      ["One", 0],
+      ["Quoted", source.indexOf("###")],
+    ]);
+  });
+
   it("returns nothing for a document without headings", () => {
     expect(extractHeadings("Just a paragraph.\n")).toEqual([]);
   });
