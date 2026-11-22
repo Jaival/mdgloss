@@ -28,6 +28,8 @@ interface CommandPaletteProps {
   /** The open file's highlights shown in the reader, in document order. */
   highlights: Highlight[];
   theme: ThemeSetting;
+  /** Whether focus mode is on. */
+  focus: boolean;
   onShowFile: (path: string) => void;
   /** Scroll to the heading that starts at this source offset. */
   onShowHeading: (offset: number) => void;
@@ -46,6 +48,7 @@ export function CommandPalette({
   headings,
   highlights,
   theme,
+  focus,
   onShowFile,
   onShowHeading,
   onShowHighlight,
@@ -75,10 +78,11 @@ export function CommandPalette({
           highlights,
           hasDocument: headings !== null,
           theme,
+          focus,
         }),
         query,
       ),
-    [tree, headings, highlights, theme, query],
+    [tree, headings, highlights, theme, focus, query],
   );
 
   function changeOpen(next: boolean) {

@@ -9,6 +9,7 @@ export type CommandId =
   | "open-folder"
   | "toggle-notes"
   | "open-settings"
+  | "toggle-focus"
   | "theme-system"
   | "theme-light"
   | "theme-dark"
@@ -41,6 +42,8 @@ export interface PaletteInput {
   /** Whether a document is open, so document commands make sense. */
   hasDocument: boolean;
   theme: ThemeSetting;
+  /** Whether focus mode is on, which names the focus-mode command. */
+  focus: boolean;
 }
 
 /** Most items shown per group, so a large folder doesn't make the list slow. */
@@ -64,7 +67,7 @@ function flattenFiles(nodes: TreeNode[], folder: string, out: PaletteItem[]) {
 
 const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
 
-function commands({ hasDocument, theme }: PaletteInput): PaletteItem[] {
+function commands({ hasDocument, theme, focus }: PaletteInput): PaletteItem[] {
   const command = (command: CommandId, label: string, checked = false): PaletteItem => ({
     kind: "command",
     id: `command:${command}`,
@@ -76,7 +79,7 @@ function commands({ hasDocument, theme }: PaletteInput): PaletteItem[] {
     command("open-file", "Open file…"),
     command("open-folder", "Open folder…"),
     ...(hasDocument ? [command("toggle-notes", "Toggle notes")] : []),
-    // UI plan step 6: the focus-mode command ("Enter focus mode" / "Leave focus mode") goes here.
+    command("toggle-focus", focus ? "Leave focus mode" : "Enter focus mode"),
     command("open-settings", "Settings"),
     command("theme-system", "Theme: System", theme === "system"),
     command("theme-light", "Theme: Light", theme === "light"),

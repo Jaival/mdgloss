@@ -45,6 +45,7 @@ const input: PaletteInput = {
   ],
   hasDocument: true,
   theme: "dark",
+  focus: false,
 };
 
 const labels = (groups: ReturnType<typeof filterGroups>) =>
@@ -63,6 +64,7 @@ describe("buildGroups", () => {
           "Open file…",
           "Open folder…",
           "Toggle notes",
+          "Enter focus mode",
           "Settings",
           "Theme: System",
           "Theme: Light",
@@ -141,5 +143,12 @@ describe("filterGroups", () => {
     // The full outline stays reachable without typing.
     const [all] = filterGroups(buildGroups({ ...input, headings: many }), "");
     expect(all.items).toHaveLength(many.length);
+  });
+
+  it("names the focus-mode command after the mode", () => {
+    const label = (focus: boolean) =>
+      buildGroups({ ...input, focus })[3].items.find((c) => c.id === "command:toggle-focus")?.label;
+    expect(label(false)).toBe("Enter focus mode");
+    expect(label(true)).toBe("Leave focus mode");
   });
 });
