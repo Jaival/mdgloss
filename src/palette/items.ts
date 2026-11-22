@@ -8,6 +8,7 @@ export type CommandId =
   | "open-file"
   | "open-folder"
   | "toggle-notes"
+  | "open-settings"
   | "theme-system"
   | "theme-light"
   | "theme-dark"
@@ -76,6 +77,7 @@ function commands({ hasDocument, theme }: PaletteInput): PaletteItem[] {
     command("open-folder", "Open folder…"),
     ...(hasDocument ? [command("toggle-notes", "Toggle notes")] : []),
     // UI plan step 6: the focus-mode command ("Enter focus mode" / "Leave focus mode") goes here.
+    command("open-settings", "Settings"),
     command("theme-system", "Theme: System", theme === "system"),
     command("theme-light", "Theme: Light", theme === "light"),
     command("theme-dark", "Theme: Dark", theme === "dark"),

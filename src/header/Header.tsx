@@ -6,6 +6,7 @@ import {
   Monitor,
   Moon,
   PanelRight,
+  Settings,
   Sun,
   Unlink,
 } from "lucide-react";
@@ -44,6 +45,7 @@ interface HeaderProps {
   onToggleNotes: () => void;
   theme: ThemeSetting;
   onThemeChange: (setting: ThemeSetting) => void;
+  onOpenSettings: () => void;
   /** Highlights shown in the reader. */
   highlightCount: number;
   /** Highlights whose text couldn't be found in the file. */
@@ -73,6 +75,7 @@ export function Header({
   onToggleNotes,
   theme,
   onThemeChange,
+  onOpenSettings,
   highlightCount,
   orphaned,
   onDeleteOrphan,
@@ -227,6 +230,14 @@ export function Header({
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" aria-label="Settings" onClick={onOpenSettings}>
+            <Settings />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Settings</TooltipContent>
+      </Tooltip>
     </header>
   );
 }

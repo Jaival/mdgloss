@@ -1,0 +1,16 @@
+/* Obel Mono 1.004 (https://typographic.systems), SIL Open Font License 1.1: see OFL.txt. */
+@font-face {
+  font-family: "Obel Mono";
+  src: url("./ObelMono-VF.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Obel Mono";
+  src: url("./ObelMono-Italic-VF.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}

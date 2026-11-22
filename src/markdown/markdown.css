@@ -137,7 +137,7 @@
 
 .markdown-body code,
 .markdown-body pre {
-  font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  font-family: var(--font-mono);
   /* 14.5px at the default 17px reading size */
   font-size: calc(14.5em / 17);
 }

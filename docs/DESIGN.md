@@ -26,8 +26,8 @@ Do not hand-edit preset codes or build preset URLs manually. Use the CLI.
 | Base color     | `mist` (cool blue-grey neutrals) |
 | Theme / accent | `cyan`                           |
 | Chart colors   | `teal`                           |
-| Body font      | Manrope                          |
-| Heading font   | Figtree                          |
+| Interface font | IBM Plex Sans (user setting)     |
+| Editor font    | Obel Mono (user setting)         |
 | Icons          | Lucide (`lucide-react`)          |
 | Radius         | default — `0.625rem` (10px)      |
 | Menu accent    | `subtle`                         |
@@ -118,26 +118,32 @@ Rules:
 
 ## 4. Typography
 
-| Role      | Font              | Notes                                                        |
-| --------- | ----------------- | ------------------------------------------------------------ |
-| UI + body | **Manrope**       | Default `font-sans`                                          |
-| Headings  | **Figtree**       | `font-heading`; used for document H1–H3 and panel titles     |
-| Code      | System mono stack | `ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace` |
+Two fonts, both picked in Settings (header gear or the palette's "Settings" command). A change applies at once and is saved in `localStorage` (`mdgloss.fonts`).
 
-Fonts install as registry dependencies (`font-manrope`, `font-heading-figtree`). Bundle them locally for Tauri. The desktop app must work offline, so no Google Fonts CDN at runtime.
+| Setting        | Variable      | Default           | Used for                                                         |
+| -------------- | ------------- | ----------------- | ---------------------------------------------------------------- |
+| Interface font | `--font-sans` | **IBM Plex Sans** | App UI, document body and headings (`font-sans`, `font-heading`) |
+| Editor font    | `--font-mono` | **Obel Mono**     | Inline code and code blocks (`font-mono`)                        |
+
+- Editor font options: Obel Mono, JetBrains Mono, Geist Mono.
+- Interface font options: IBM Plex Sans, Geist, Figtree, Atkinson Hyperlegible Next, Manrope, Google Sans, Google Sans Flex, Space Grotesk, Instrument Sans, Hanken Grotesk, Onest, DM Sans, Public Sans.
+- The list lives in `src/fonts/catalog.ts`; `src/fonts/useFonts.ts` loads the choice and sets the variable on `<html>`. Fallbacks: `ui-monospace, Consolas, monospace` and `"Segoe UI", system-ui, sans-serif`.
+- Every font is bundled; the app works offline, so no Google Fonts CDN. Fontsource variable packages, except Obel Mono, which is in `src/assets/fonts/obel-mono/` with its `OFL.txt`.
+- Only the two defaults load at startup (`src/main.tsx`). Others load when chosen, or while Settings is open so each option shows in its own font.
+- A saved font that is unknown or fails to load falls back to the default.
 
 ### Reading view scale
 
 The document is set larger than the UI.
 
-| Element                  | Size                      | Line height | Weight       |
-| ------------------------ | ------------------------- | ----------- | ------------ |
-| Body paragraph           | 17px (`text-[17px]`)      | 1.7         | 400          |
-| H1                       | 32px                      | 1.2         | 700, Figtree |
-| H2                       | 24px                      | 1.3         | 600, Figtree |
-| H3                       | 20px                      | 1.4         | 600, Figtree |
-| Inline code / code block | 14.5px                    | 1.6         | 400, mono    |
-| Measure (line length)    | `--reader-measure` (68ch) |             |              |
+| Element                  | Size                      | Line height | Weight    |
+| ------------------------ | ------------------------- | ----------- | --------- |
+| Body paragraph           | 17px (`text-[17px]`)      | 1.7         | 400       |
+| H1                       | 32px                      | 1.2         | 700       |
+| H2                       | 24px                      | 1.3         | 600       |
+| H3                       | 20px                      | 1.4         | 600       |
+| Inline code / code block | 14.5px                    | 1.6         | 400, mono |
+| Measure (line length)    | `--reader-measure` (68ch) |             |           |
 
 ### UI scale
 
@@ -149,16 +155,16 @@ The document is set larger than the UI.
 
 ### Reader tokens
 
-The reading view (`src/markdown/markdown.css`) takes its body and heading fonts, size and measure only from these variables, set on `:root` in `src/index.css`. Code keeps the mono stack above. A font swap or a reader setting changes the token, not the reader styles.
+The reading view (`src/markdown/markdown.css`) takes its body and heading fonts, size and measure only from these variables, set on `:root` in `src/index.css`. Code uses `--font-mono`. A font swap or a reader setting changes the token, not the reader styles.
 
-| Token                   | Value                            | Use                                          |
-| ----------------------- | -------------------------------- | -------------------------------------------- |
-| `--font-reader`         | `"Manrope Variable", sans-serif` | Document body text                           |
-| `--font-reader-heading` | `"Figtree Variable", sans-serif` | Document headings H1–H6                      |
-| `--reader-size`         | `17px`                           | Body size; the heading scale derives from it |
-| `--reader-measure`      | `68ch`                           | Line length of the text column               |
+| Token                   | Value              | Use                                          |
+| ----------------------- | ------------------ | -------------------------------------------- |
+| `--font-reader`         | `var(--font-sans)` | Document body text                           |
+| `--font-reader-heading` | `var(--font-sans)` | Document headings H1–H6                      |
+| `--reader-size`         | `17px`             | Body size; the heading scale derives from it |
+| `--reader-measure`      | `68ch`             | Line length of the text column               |
 
-Today the reader values equal the UI fonts (`font-sans`, `font-heading`). They are separate tokens so the reading font can change without touching the UI.
+Today both follow the interface font. They are separate tokens so a reading font can differ from the UI later without touching the reader styles.
 
 Reading font size should be user-adjustable (S/M/L) later. That setting only changes `--reader-size`.
 
@@ -264,7 +270,7 @@ When generating UI for mdgloss:
 1. Use semantic tokens (`bg-background`, `text-foreground`, `bg-primary`, `border-border`, `bg-highlight-yellow`). No raw colors.
 2. No manual `dark:` color classes. Tokens handle dark mode.
 3. Add shadcn components with `bunx --bun shadcn@latest add <name>`; check `components/ui` first to avoid duplicates.
-4. Fonts: `font-sans` (Manrope) for UI and body, `font-heading` (Figtree) for headings.
+4. Fonts: `font-sans` / `font-heading` (interface font) for UI and text, `font-mono` (editor font) for code. Never name a font family in a component; read the variables.
 5. Icons from `lucide-react` only, using the mapping in section 7.
 6. Radius via `rounded-*` tokens only.
 7. Use `Field`/`FieldGroup` for forms.
