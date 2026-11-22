@@ -6,6 +6,7 @@ import {
   useState,
   type RefObject,
 } from "react";
+import { flushSync } from "react-dom";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { CardMenu } from "../annotations/CardMenu";
@@ -87,7 +88,8 @@ export function MarginNotes({
   // the margin showing again, a card expanding: anything that moves the marks
   // or changes a box's height resizes one of these.
   useEffect(() => {
-    const observer = new ResizeObserver(() => relayout());
+    // Observer callbacks run before paint; flush so the cards move in the same frame.
+    const observer = new ResizeObserver(() => flushSync(relayout));
     if (article.current) observer.observe(article.current);
     if (marginRef.current) observer.observe(marginRef.current);
     for (const box of boxes.current.values()) observer.observe(box);
