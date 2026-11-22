@@ -3,25 +3,8 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { appDataDir } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
-import {
-  Download,
-  FileText,
-  FolderOpen,
-  HardDrive,
-  Monitor,
-  Moon,
-  PanelRight,
-  Sun,
-} from "lucide-react";
+import { FileText, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Empty,
   EmptyContent,
@@ -29,8 +12,6 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -44,9 +25,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CommentPopover, type Anchor } from "./annotations/CommentPopover";
 import { createHighlight, placeHighlights } from "./annotations/highlights";
 import { HighlightToolbar } from "./annotations/HighlightToolbar";
@@ -59,11 +38,12 @@ import { reloadFile } from "./files/reload";
 import { affectsTree, loadMarkdownTree, type TreeNode } from "./files/tree";
 import { baseName, joinPath } from "./fs/path";
 import { TauriFileSystem } from "./fs/tauri";
+import { Header } from "./header/Header";
 import { classifyLink, resolveImage } from "./markdown/links";
 import { Markdown } from "./markdown/Markdown";
 import { imageSources } from "./markdown/pipeline";
 import { toSourceSelection, type SourceSelection } from "./selection/sourceSelection";
-import { isThemeSetting, useTheme } from "./theme";
+import { useTheme } from "./theme";
 import { useUpdate } from "./updates";
 import "./markdown/markdown.css";
 
@@ -430,8 +410,6 @@ function App() {
       : undefined;
   const headerError = error ?? annotations.error;
 
-  const ThemeIcon = { system: Monitor, light: Sun, dark: Moon }[theme.setting];
-
   return (
     <SidebarProvider
       className="h-dvh min-h-0 overflow-hidden"
@@ -478,105 +456,21 @@ function App() {
       </Sidebar>
 
       <SidebarInset className="min-w-0">
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <SidebarTrigger aria-label="Toggle sidebar" />
-            </TooltipTrigger>
-            <TooltipContent>
-              Toggle sidebar{" "}
-              <KbdGroup>
-                <Kbd>Ctrl</Kbd>
-                <Kbd>B</Kbd>
-              </KbdGroup>
-            </TooltipContent>
-          </Tooltip>
-          <Separator orientation="vertical" className="h-4" />
-          <span className="min-w-0 truncate text-sm text-muted-foreground" title={doc?.path}>
-            {doc ? doc.path : "mdgloss"}
-          </span>
-          {doc && annotations.location === "app" && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  className="flex shrink-0 items-center text-muted-foreground"
-                  tabIndex={0}
-                  aria-label="Annotations kept in app storage"
-                >
-                  <HardDrive className="size-4" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-64">
-                This file&apos;s folder can&apos;t be written, so its annotations are kept in the
-                app&apos;s own storage instead of a .mdgloss folder next to it.
-              </TooltipContent>
-            </Tooltip>
-          )}
-          {headerError && (
-            <span
-              className="min-w-0 truncate text-sm text-destructive"
-              role="alert"
-              title={headerError}
-            >
-              {headerError}
-            </span>
-          )}
-          <span className="ml-auto" />
-          {appUpdate.ready && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              onClick={() => run(appUpdate.install)}
-            >
-              <Download data-icon="inline-start" />
-              Restart to update to {appUpdate.ready.version}
-            </Button>
-          )}
-          {doc && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Toggle notes"
-                  aria-pressed={notesOpen}
-                  onClick={() => setNotesOpen((open) => !open)}
-                >
-                  <PanelRight />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Toggle notes</TooltipContent>
-            </Tooltip>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Theme">
-                <ThemeIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Theme</DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={theme.setting}
-                onValueChange={(value) => isThemeSetting(value) && theme.setSetting(value)}
-              >
-                <DropdownMenuRadioItem value="system">
-                  <Monitor />
-                  System
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="light">
-                  <Sun />
-                  Light
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="dark">
-                  <Moon />
-                  Dark
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </header>
+        <Header
+          path={doc?.path ?? null}
+          root={workspace?.root ?? null}
+          appStorage={annotations.location === "app"}
+          error={headerError}
+          updateVersion={appUpdate.ready?.version ?? null}
+          onInstallUpdate={() => run(appUpdate.install)}
+          notesOpen={notesOpen}
+          onToggleNotes={() => setNotesOpen((open) => !open)}
+          theme={theme.setting}
+          onThemeChange={theme.setSetting}
+          highlightCount={listed.length}
+          orphaned={placement.orphaned}
+          onDeleteOrphan={removeHighlight}
+        />
 
         <div className="flex min-h-0 flex-1">
           <div

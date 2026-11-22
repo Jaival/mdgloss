@@ -10,17 +10,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import type { Highlight, HighlightColor } from "./types";
-
-const BORDER: Record<HighlightColor, string> = {
-  yellow: "border-l-highlight-yellow",
-  green: "border-l-highlight-green",
-  pink: "border-l-highlight-pink",
-  purple: "border-l-highlight-purple",
-};
-
-const DATE = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
+import { CardBody } from "./CardBody";
+import { OrphanList } from "./OrphanList";
+import type { Highlight } from "./types";
 
 interface NotesPanelProps {
   /** The current file's highlights that are shown in the reader, in document order. */
@@ -119,63 +111,12 @@ export function NotesPanel({
                 <span className="text-muted-foreground">{orphaned.length}</span>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <p className="px-1 pb-2 text-xs text-muted-foreground">
-                  The file changed and these quotes are no longer in it.
-                </p>
-                <ul className="flex flex-col gap-2">
-                  {orphaned.map((h) => (
-                    <li key={h.id}>
-                      <Card size="sm" className="relative gap-0 rounded-md bg-muted py-0">
-                        <div className="flex flex-col gap-1.5 p-3 pr-10">
-                          <CardBody highlight={h} />
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="absolute top-1.5 right-1.5 size-7"
-                              aria-label="Highlight actions"
-                            >
-                              <Ellipsis />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem variant="destructive" onSelect={() => onDelete(h.id)}>
-                              <Trash2 />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </Card>
-                    </li>
-                  ))}
-                </ul>
+                <OrphanList orphaned={orphaned} onDelete={onDelete} />
               </CollapsibleContent>
             </Collapsible>
           )}
         </ScrollArea>
       )}
     </aside>
-  );
-}
-
-/** A card's quote with a border in the highlight's colour, its comment and its date. */
-function CardBody({ highlight: h }: { highlight: Highlight }) {
-  return (
-    <>
-      <span
-        className={cn(
-          "line-clamp-3 border-l-2 pl-2 text-xs text-muted-foreground",
-          BORDER[h.color],
-        )}
-      >
-        {h.quote}
-      </span>
-      {h.comment && <span className="whitespace-pre-wrap">{h.comment}</span>}
-      <time dateTime={h.updated} className="text-xs text-muted-foreground">
-        {DATE.format(new Date(h.updated))}
-      </time>
-    </>
   );
 }
