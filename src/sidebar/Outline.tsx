@@ -10,6 +10,11 @@ import { headingInView, type Heading } from "../markdown/headings";
 /** A heading counts as in view once its top passes this far below the reader's top. */
 const VIEW_LINE = 80;
 
+/** Searched inside the reader: a heading id like "root" can match other ids on the page. */
+function findHeading(root: HTMLElement | null, id: string): Element | null | undefined {
+  return root?.querySelector(`#${CSS.escape(id)}`);
+}
+
 interface OutlineProps {
   headings: readonly Heading[];
   /** Highlights in each heading's section, by index. */
@@ -31,7 +36,7 @@ export function Outline({ headings, counts, scrollRoot }: OutlineProps) {
       frame = 0;
       const top = root.getBoundingClientRect().top;
       const tops = headings.map(
-        (h) => (document.getElementById(h.id)?.getBoundingClientRect().top ?? Infinity) - top,
+        (h) => (findHeading(root, h.id)?.getBoundingClientRect().top ?? Infinity) - top,
       );
       setCurrent(headingInView(tops, VIEW_LINE));
     };
@@ -48,7 +53,7 @@ export function Outline({ headings, counts, scrollRoot }: OutlineProps) {
 
   // Keep the marked heading visible in a long outline.
   useEffect(() => {
-    listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: "nearest" });
+    listRef.current?.querySelector("[data-active]")?.scrollIntoView({ block: "nearest" });
   }, [current]);
 
   if (headings.length === 0) {
@@ -59,9 +64,10 @@ export function Outline({ headings, counts, scrollRoot }: OutlineProps) {
 
   function goTo(id: string) {
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    document
-      .getElementById(id)
-      ?.scrollIntoView({ block: "start", behavior: still ? "auto" : "smooth" });
+    findHeading(scrollRoot.current, id)?.scrollIntoView({
+      block: "start",
+      behavior: still ? "auto" : "smooth",
+    });
   }
 
   return (
@@ -72,7 +78,7 @@ export function Outline({ headings, counts, scrollRoot }: OutlineProps) {
             size="sm"
             isActive={i === current}
             aria-current={i === current ? "location" : undefined}
-            className="group-has-data-[sidebar=menu-badge]/menu-item:pr-8 data-[active=true]:font-semibold data-[active=true]:shadow-[inset_2px_0_var(--primary)]"
+            className="group-has-data-[sidebar=menu-badge]/menu-item:pr-8 data-active:font-semibold data-active:shadow-[inset_2px_0_var(--primary)]"
             style={{ paddingLeft: `${0.5 + (heading.depth - top) * 0.75}rem` }}
             title={heading.text}
             onClick={() => goTo(heading.id)}
