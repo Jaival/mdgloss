@@ -14,6 +14,8 @@ interface FocusChromeProps {
   highlights: Highlight[];
   /** Words in the open file, for the time left. */
   words: number;
+  /** A load or save error; the header that shows it is hidden in focus mode. */
+  error: string | null;
   /** The reader's scroll area. */
   scrollRoot: RefObject<HTMLElement | null>;
   /** The rendered document, holding the highlights' <mark>s. */
@@ -37,6 +39,7 @@ export function FocusChrome({
   fileName,
   highlights,
   words,
+  error,
   scrollRoot,
   article,
   onOpenPalette,
@@ -101,6 +104,15 @@ export function FocusChrome({
           <Kbd>K</Kbd>
         </KbdGroup>
       </button>
+      {error && (
+        <span
+          role="alert"
+          title={error}
+          className={cn(PILL, "top-3 right-8 max-w-[40%] truncate text-destructive")}
+        >
+          {error}
+        </span>
+      )}
       {fileName && (
         <>
           <span className={cn(PILL, "bottom-3 left-3 text-muted-foreground")}>
@@ -110,6 +122,8 @@ export function FocusChrome({
             type="button"
             className={cn(BUTTON_PILL, "right-8 bottom-3")}
             title="Notes"
+            aria-label={`${countLabel(highlights.length, "note", "notes")}: open the notes`}
+            aria-keyshortcuts="N"
             onClick={onOpenNotes}
           >
             <MessageSquare aria-hidden />

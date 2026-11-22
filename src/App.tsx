@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { appDataDir } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -435,11 +443,36 @@ function App() {
     if (mark) setCommenting({ type: "highlight", id, anchor: mark });
   }
 
-  /** The toolbar is placed for the old layout, so it closes when the mode changes. */
+  /** The block at the top of the reader and its offset, kept across a mode switch. */
+  const readingPlace = useRef<{ block: Element; offset: number } | null>(null);
+
+  /**
+   * The sidebar and margin come and go, so the text reflows: remember the block
+   * at the top of the reader and bring it back after the switch. The toolbar is
+   * placed for the old layout, so it closes.
+   */
   function switchMode(next: ReaderMode) {
+    if (next === mode) return;
     setToolbar(null);
+    const root = readerRef.current;
+    const rootTop = root?.getBoundingClientRect().top ?? 0;
+    const block = [...(articleRef.current?.children ?? [])].find(
+      (child) => child.getBoundingClientRect().bottom > rootTop,
+    );
+    readingPlace.current = block
+      ? { block, offset: block.getBoundingClientRect().top - rootTop }
+      : null;
     setMode(next);
   }
+
+  useLayoutEffect(() => {
+    const place = readingPlace.current;
+    const root = readerRef.current;
+    readingPlace.current = null;
+    if (!place || !root || !place.block.isConnected) return;
+    const rootTop = root.getBoundingClientRect().top;
+    root.scrollTop += place.block.getBoundingClientRect().top - rootTop - place.offset;
+  }, [mode]);
 
   const notesShown = doc !== null && notesOpen;
   const overlayOpen =
@@ -454,7 +487,7 @@ function App() {
         shiftKey: event.shiftKey,
         repeat: event.repeat,
         defaultPrevented: event.defaultPrevented,
-        textEntry: isTextEntry(event.target),
+        textEntry: event.isComposing || isTextEntry(event.target),
       },
       { focus, overlayOpen, hasDocument: doc !== null },
     );
@@ -661,6 +694,7 @@ function App() {
               fileName={doc ? baseName(doc.path) : null}
               highlights={listed}
               words={words}
+              error={headerError}
               scrollRoot={readerRef}
               article={articleRef}
               onOpenPalette={() => setPaletteOpen(true)}
